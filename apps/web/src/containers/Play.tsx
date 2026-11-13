@@ -1,91 +1,14 @@
 import { useState, useRef, useCallback } from 'react'
 import { useLayoutEffect, useEffect } from 'react'
-import { useNext, useGotoSummary, type Log } from '@remake/hooks'
+import { useNext, useGotoSummary, useSetStep, Step } from '@remake/hooks'
 import { useJudge } from '@/hooks/judge'
-import { achievements, events, talents } from '@remake/data'
 import { properties } from '@remake/data/etc/display'
 import { AutoInterval } from '@/config'
-import { format } from '@remake/vitex'
 import { toastAchvs } from '@/toast/Achv'
+import { Log } from '@/components/LogList'
+import { useInMatch, useMulti } from '@/multi/useMulti'
+import { Battle } from './Battle'
 import './Play.css'
-
-function LogTalent({ id }: { id: number }) {
-    const { name, description, grade } = talents.get(id)!
-    return (
-        <li className={`grade-${grade}`}>
-            <span className="tag font-mono">[天赋]</span>
-            <span className="name">{name}</span>
-            <span className="description">{description}</span>
-        </li>
-    )
-}
-
-function LogTalents({ items }: { items: number[] }) {
-    if (items.length === 0) return null
-    const els = items.map(id => <LogTalent key={id} id={id} />)
-    return <ul className="log-inner log-talents">{els}</ul>
-}
-
-const year = new Date().getFullYear()
-interface LogEventProps {
-    id: number
-    post: boolean
-    index: number
-}
-function LogEvent({ id, post, index }: LogEventProps) {
-    let { event, postEvent, grade, format: f } = events.get(id)!
-    if (f) {
-        const g = (key: string) => ({ CurrentYear: year + index })[key]
-        event = format(event, g)
-        if (post && postEvent) postEvent = format(postEvent, g)
-    }
-    return (
-        <>
-            <li className={`grade-${grade}`}>{event}</li>
-            {post && postEvent && (
-                <li className={`grade-${grade}`}>{postEvent}</li>
-            )}
-        </>
-    )
-}
-
-function LogEvents({ items, index }: { items: number[]; index: number }) {
-    const last = items.length - 1
-    const els = items.map((id, i) => (
-        <LogEvent key={id} id={id} post={i == last} index={index} />
-    ))
-    return <ul className="log-inner log-events">{els}</ul>
-}
-
-function LogAchievement({ id }: { id: number }) {
-    const { name, description, grade } = achievements.get(id)!
-    return (
-        <li className={`grade-${grade}`}>
-            <span className="tag font-mono">[成就]</span>
-            <span className="name">{name}</span>
-            <span className="description">{description}</span>
-        </li>
-    )
-}
-
-function LogAchievements({ items }: { items: number[] }) {
-    if (items.length === 0) return null
-    const els = items.map(id => <LogAchievement key={id} id={id} />)
-    return <ul className="log-inner log-achievements">{els}</ul>
-}
-
-function Log({ log, index }: { log: Log; index: number }) {
-    return (
-        <li className="log">
-            <span className="age font-mono">{log.age}岁</span>
-            <div className="content">
-                <LogTalents items={log.talents} />
-                <LogEvents items={log.events} index={index} />
-                <LogAchievements items={log.achievements} />
-            </div>
-        </li>
-    )
-}
 
 interface PropProps {
     prop: keyof typeof properties
@@ -145,7 +68,8 @@ function Properties() {
     )
 }
 
-export function Play() {
+/** 单机：点一下过一年，本地直接推进 */
+function Solo() {
     const [{ logs, ended }, next] = useNext()
     const [auto, setAuto] = useState(false)
     const logRef = useRef<HTMLUListElement>(null)
@@ -185,12 +109,15 @@ export function Play() {
                 ref={logRef}
             >
                 {logs.map((log, index) => (
-                    <Log key={index} log={log} index={index} />
+                    <Log key={index} log={log} />
                 ))}
             </ul>
             <div className="controls">
                 {!ended && (
-                    <button className="primary" onClick={() => setAuto(!auto)}>
+                    <button
+                        className="primary"
+                        onClick={() => setAuto(!auto)}
+                    >
                         {auto ? '关闭自动' : '开启自动'}
                     </button>
                 )}
@@ -202,6 +129,25 @@ export function Play() {
             </div>
         </div>
     )
+}
+
+/** 在房间里就走全场对战，否则还是原来那套单人流程 */
+export function Play() {
+    const active = useInMatch()
+    const room = useMulti().room
+    const setStep = useSetStep()
+    /**
+     * 服务端在结算后会把房间收回大厅（phase 变回 lobby）。
+     * 这时候要主动退回房间页 —— 否则会掉进「不在对局里」的分支，
+     * 露出上一局的单人页面，而那个页面已经不能推进了。
+     */
+    const lobby = room !== null && room.phase === 'lobby'
+    useEffect(() => {
+        if (lobby) setStep(Step.Room)
+    }, [lobby, setStep])
+    // 退回房间页的那一两帧不要闪出单人界面
+    if (lobby) return null
+    return active ? <Battle /> : <Solo />
 }
 
 export default Play

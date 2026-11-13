@@ -1,0 +1,281 @@
+/**
+ * 多人对战：整屏并排显示每个人的人生。
+ *
+ * 自己那一列是完整的本地游戏，别人的列是服务端广播过来的镜像 ——
+ * 只有属性和最近若干年的日志。两边用的是同一套日志组件，所以
+ * 「别人看你」和「你看别人」长得一样。
+ *
+ * 推进是全自动的：不用点“继续”，服务端按节拍往下走。想停下来读文字时
+ * 谁都可以按“暂停”，再按一次就继续；嫌快嫌慢谁都能调节拍。
+ */
+import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useGameState, useGoHome, useNext } from '@remake/hooks'
+import { properties } from '@remake/data/etc/display'
+import { SPEEDS } from '@remake/multi'
+import { judgeGradeByValue } from '@/config'
+import { Log } from '@/components/LogList'
+import { DanmakuInput, DanmakuTrack } from '@/components/Danmaku'
+import { useJudge } from '@/hooks/judge'
+import {
+    disconnect,
+    setPaused as sendPaused,
+    setSpeed as sendSpeed,
+} from '@/multi/client'
+import { copyText } from '@/multi/clipboard'
+import { useMultiMatch } from '@/multi/play'
+import { toastMsg } from '@/toast'
+import type { Props, PlayerView } from '@remake/multi'
+import './Battle.css'
+
+/** 属性的固定显示顺序，和自己列的 CSS order 保持一致 */
+const PROP_ORDER = ['charm', 'intelligence', 'strength', 'money', 'spirit'] as const
+
+/** 节拍档位的短标签，和 protocol 里的 SPEEDS 一一对应 */
+const SPEED_LABELS: Record<number, string> = {
+    3000: '慢',
+    1500: '正常',
+    800: '快',
+    400: '极速',
+}
+
+/** 几个人排几列：4 人用 2×2 比一字排开每列宽一倍，读得清 */
+function columnsFor(count: number) {
+    if (count <= 1) return 1
+    if (count <= 3) return count
+    if (count === 4) return 2
+    if (count <= 6) return 3
+    return 4
+}
+
+function PropRow({ props }: { props: Props | null }) {
+    return (
+        <ul className="battle-props">
+            {PROP_ORDER.map(key => {
+                const value = props?.[key] ?? 0
+                const grade = judgeGradeByValue(key, value)
+                return (
+                    <li key={key} className={`grade-${grade}`}>
+                        <span className="name">{properties[key]}</span>
+                        <span className="value font-mono">{value}</span>
+                    </li>
+                )
+            })}
+        </ul>
+    )
+}
+
+/** 自己那一列：走 useJudge，和单人页的属性条完全同源 */
+function MyProps() {
+    const judges = useJudge()
+    const map = new Map(judges.map(([key, judge]) => [key, judge]))
+    return (
+        <ul className="battle-props">
+            {PROP_ORDER.map(key => {
+                const judge = map.get(key)
+                const value = judge?.value ?? 0
+                const grade = judge?.grade ?? 0
+                return (
+                    <li key={key} className={`grade-${grade}`}>
+                        <span className="name">{properties[key]}</span>
+                        <span className="value font-mono">{value}</span>
+                    </li>
+                )
+            })}
+        </ul>
+    )
+}
+
+interface MyColumnProps {
+    name: string
+    age: number
+    ended: boolean
+    paused: boolean
+    logs: { age: number; events: number[]; talents: number[]; achievements: number[] }[]
+}
+
+function MyColumn({ name, age, ended, paused, logs }: MyColumnProps) {
+    const ref = useRef<HTMLUListElement>(null)
+    useLayoutEffect(() => {
+        requestAnimationFrame(() => {
+            const el = ref.current
+            if (!el) return
+            el.scrollTop = el.scrollHeight
+        })
+    }, [logs])
+    const note = ended
+        ? '你的人生结束了，等其他人跑完…'
+        : paused
+          ? '已暂停'
+          : '自动推进中…'
+    return (
+        <section className="battle-col me">
+            <header className="battle-col-bar">
+                <span className="name">
+                    {name}
+                    <span className="tag font-mono">我</span>
+                </span>
+                <span className="age font-mono">{age}岁</span>
+            </header>
+            <MyProps />
+            <ul className="logs battle-logs hide-scrollbar" ref={ref}>
+                {logs.map((log, index) => (
+                    <Log key={index} log={log} />
+                ))}
+            </ul>
+            <footer className="battle-foot">
+                <span className="battle-note">{note}</span>
+            </footer>
+        </section>
+    )
+}
+
+function PeerColumn({
+    player,
+    paused,
+}: {
+    player: PlayerView
+    paused: boolean
+}) {
+    const state = !player.alive
+        ? player.connected
+            ? '已结束'
+            : '已离线'
+        : paused
+          ? '已暂停'
+          : '自动推进中…'
+    return (
+        <section className={`battle-col peer ${player.alive ? '' : 'dead'}`}>
+            <header className="battle-col-bar">
+                <span className="name">{player.name}</span>
+                <span className="age font-mono">{player.age}岁</span>
+            </header>
+            <PropRow props={player.props} />
+            <ul className="logs battle-logs hide-scrollbar">
+                {player.logs.length === 0 && (
+                    <li className="battle-empty">还没迈出第一步…</li>
+                )}
+                {player.logs.map((log, index) => (
+                    <Log key={index} log={log} />
+                ))}
+            </ul>
+            <footer className="battle-foot">
+                <span className="battle-note">{state}</span>
+            </footer>
+        </section>
+    )
+}
+
+export function Battle() {
+    const [{ logs, ended }, next] = useNext()
+    const { mp } = useMultiMatch(next, ended)
+    const state = useGameState()
+    const goHome = useGoHome()
+
+    const room = mp.room
+    const handlePause = useCallback(() => {
+        if (!room) return
+        sendPaused(!room.paused)
+    }, [room])
+    const handleLeave = useCallback(() => {
+        disconnect()
+        goHome()
+    }, [goHome])
+    const copyLink = useCallback(async () => {
+        if (!room) return
+        const url = `${location.origin}${location.pathname}?room=${room.id}`
+        const ok = await copyText(url)
+        toastMsg(
+            ok ? '邀请链接已复制，发到群里就能进' : '复制失败，请手动复制地址栏链接',
+            'copy-link',
+        )
+    }, [room])
+
+    if (!room) return null
+
+    const players = room.players
+    const alive = players.filter(player => player.alive).length
+    const cols = columnsFor(players.length)
+    const waiting = room.waiting
+    /** 还在等别人选天赋时，「继续」没有意义，按钮先不出现；收摊那一帧也不给按 */
+    const canToggle = room.phase === 'playing' && waiting.length === 0
+
+    return (
+        <div className="battle">
+            <div className="battle-bar">
+                <span className="battle-code font-mono">{room.id}</span>
+                <span className="battle-round font-mono">已过 {room.round} 年</span>
+                <span className="battle-meta">
+                    {alive} / {players.length} 人还在跑
+                </span>
+                {/* 节拍谁都能改：读得快的人不必等，想细看的人也不必抢暂停 */}
+                <span className="battle-speed" role="group" aria-label="推进速度">
+                    <span className="battle-speed-label">速度</span>
+                    {SPEEDS.map(ms => (
+                        <button
+                            key={ms}
+                            className={room.interval === ms ? 'primary' : ''}
+                            onClick={() => sendSpeed(ms)}
+                            title={`每年 ${(ms / 1000).toFixed(1)} 秒`}
+                        >
+                            {SPEED_LABELS[ms]}
+                        </button>
+                    ))}
+                </span>
+                <span className="battle-spacer" />
+                {canToggle && (
+                    <button className="primary" onClick={handlePause}>
+                        {room.paused ? '继续' : '暂停'}
+                    </button>
+                )}
+                <button className="secondary" onClick={copyLink}>
+                    复制邀请
+                </button>
+                <button className="secondary" onClick={handleLeave}>
+                    退出
+                </button>
+            </div>
+
+            {/* 弹幕轨在顶栏下面，不压任何人的日志 */}
+            <DanmakuTrack />
+
+            {room.paused && (
+                <div className="battle-pause">
+                    {waiting.length > 0
+                        ? `等待 ${waiting.join('、')} 选完天赋…`
+                        : `${room.pausedBy ?? '有人'} 暂停了对局，任何一个人都可以点「继续」`}
+                </div>
+            )}
+
+            <div
+                className="battle-stage"
+                style={{ ['--cols' as string]: cols }}
+            >
+                {players.map(player =>
+                    player.id === mp.id ? (
+                        <MyColumn
+                            key={player.id}
+                            name={player.name}
+                            age={Math.max(
+                                0,
+                                state?.props.current.age ?? player.age,
+                            )}
+                            ended={ended}
+                            paused={room.paused}
+                            logs={logs}
+                        />
+                    ) : (
+                        <PeerColumn
+                            key={player.id}
+                            player={player}
+                            paused={room.paused}
+                        />
+                    ),
+                )}
+            </div>
+
+            <DanmakuInput />
+        </div>
+    )
+}
+
+export default Battle

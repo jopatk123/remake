@@ -113,3 +113,5 @@ template/public
 public/data
 
 *.cache.*
+# WorkBuddy 本地数据
+.workbuddy/

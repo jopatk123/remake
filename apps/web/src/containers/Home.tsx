@@ -1,4 +1,4 @@
-import { useRemake, useFeatures, useGoAchv, useGoThanks } from '@remake/hooks'
+import { useRemake, useFeatures, useGoAchv, useGoThanks, useSetStep, Step } from '@remake/hooks'
 import { TextSvg } from '@/components/TextSvg'
 import ThemeToggle from '@/components/ThemeToggle'
 import Github from '@/components/Github'
@@ -9,6 +9,7 @@ export default function Home() {
     const features = useFeatures()
     const goAchv = useGoAchv()
     const goThanks = useGoThanks()
+    const setStep = useSetStep()
     return (
         <div className="screen home">
             <div className="title">
@@ -19,6 +20,14 @@ export default function Home() {
                 <div>
                     <button className="primary focus" onClick={remake}>
                         立即重开
+                    </button>
+                </div>
+                <div>
+                    <button
+                        className="secondary"
+                        onClick={() => setStep(Step.Room)}
+                    >
+                        多人对战
                     </button>
                 </div>
                 {features && (

@@ -1,0 +1,21 @@
+{
+    "name": "@remake/server",
+    "type": "module",
+    "version": "0.1.0",
+    "private": true,
+    "main": "src/index.ts",
+    "scripts": {
+        "dev": "bun --watch run src/index.ts",
+        "start": "node dist/index.js",
+        "build": "bun build src/index.ts --outdir dist --target=node --external ws",
+        "test:proto": "bun run test/protocol.ts"
+    },
+    "dependencies": {
+        "@remake/multi": "workspace:*",
+        "ws": "^8.18.3"
+    },
+    "devDependencies": {
+        "@types/node": "^26.6.6",
+        "@types/ws": "^8.18.1"
+    }
+}

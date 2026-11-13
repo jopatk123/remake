@@ -9,5 +9,5 @@
       "@/*": ["./src/*"],
     },
   },
-  "include": ["**/*"]
+  "include": ["**/*", "../../thirdparty/bili-toy/lib/toy.d.ts"]
 }

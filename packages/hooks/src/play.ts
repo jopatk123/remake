@@ -8,6 +8,7 @@ import type { Talent } from '@remake/data'
 
 export enum Step {
     Idle = 'idle',
+    Room = 'room',
     Mode = 'mode',
     Chara = 'chara',
     Pick = 'pick',

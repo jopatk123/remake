@@ -13,8 +13,10 @@
         "test": "bunx --bun vitest"
     },
     "dependencies": {
+        "@remake/core": "workspace:*",
         "@remake/data": "workspace:*",
         "@remake/hooks": "workspace:*",
+        "@remake/multi": "workspace:*",
         "@remake/thirdparty-bili-toy": "workspace:*",
         "@remake/vitex": "workspace:*",
         "jotai": "^3.0.1",

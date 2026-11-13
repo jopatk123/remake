@@ -1,0 +1,69 @@
+import { useEffect, useRef } from 'react'
+import { summary as score } from '@remake/core/state'
+import { useGameState, useLogs } from '@remake/hooks'
+import { LOG_LIMIT, type LogLine } from '@remake/multi'
+import * as client from './client'
+import { useInMatch, useMulti } from './useMulti'
+import { toastAchvs } from '@/toast/Achv'
+
+/**
+ * 自动推进：服务端按节拍发 tick，收到就在本地过一年。
+ *
+ * 注意这里一次只推进一年、靠 `next` 换新再进下一轮。原因是 useNext 的闭包
+ * 拿的是上一次的 state，在同一个 effect 里连调两次会把同一年算两遍。
+ * 用「推进一年 → setState → next 换新 → effect 再跑」这个链子追赶，
+ * 即使某次收到两拍也不会漏年。
+ */
+export function useMultiMatch(next: () => number[], ended: boolean) {
+    const active = useInMatch()
+    const mp = useMulti()
+    const state = useGameState()
+    const logs = useLogs()
+    const advanced = useRef(0)
+    const synced = useRef('')
+
+    useEffect(() => {
+        if (!active) return
+        // 一局结束房间回到大厅时 round 会归零，计数器得跟着回落，
+        // 否则下一局每一拍都会因为「比上次小」而白跑
+        if (mp.round < advanced.current) advanced.current = mp.round
+        if (mp.round <= advanced.current) return
+        if (ended) {
+            // 自己已经跑完，把计数对齐，免得每一拍都白跑一次
+            advanced.current = mp.round
+            return
+        }
+        advanced.current += 1
+        try {
+            toastAchvs(next())
+        } catch (error) {
+            // 比如 400 岁复活后抽不到事件，兜底按阵亡处理，别让整个房间卡住
+            console.error('[多人] 推进失败，按阵亡处理', error)
+        }
+    }, [active, mp.round, ended, next])
+
+    useEffect(() => {
+        if (!active || !state) return
+        const key = `${state.props.current.age}:${state.life}`
+        if (synced.current === key) return
+        synced.current = key
+        const { age, charm, intelligence, strength, money, spirit } =
+            state.props.current
+        const lines: LogLine[] = logs.slice(-LOG_LIMIT).map(log => ({
+            age: log.age,
+            events: log.events,
+            talents: log.talents,
+            achievements: log.achievements,
+        }))
+        client.sync({
+            age,
+            life: state.life,
+            alive: state.life > 0,
+            summary: score(state),
+            props: { charm, intelligence, strength, money, spirit },
+            logs: lines,
+        })
+    }, [active, state, logs])
+
+    return { active, mp }
+}

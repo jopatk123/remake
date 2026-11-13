@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useInit, useWatcher } from '@/hooks/storage'
-import { useStep, Step } from '@remake/hooks'
+import { useStep, useSetStep, Step } from '@remake/hooks'
 import ToastContainer from '@/toast'
 import Home from '@/containers/Home'
+import Room from '@/containers/Room'
 import Mode from '@/containers/Mode'
 import Chara from '@/containers/Chara'
 import Pick from '@/containers/Pick'
@@ -17,6 +18,7 @@ export function Container() {
     /* prettier-ignore */
     switch (useStep()) {
         case Step.Idle: return <Home />
+        case Step.Room: return <Room />
         case Step.Mode: return <Mode />
         case Step.Chara: return <Chara />
         case Step.Pick: return <Pick />
@@ -39,6 +41,14 @@ const Saving = ({ active }: { active: boolean }) => (
 export function Game() {
     const [inited, init] = useInit()
     const saving = useWatcher()
+    const setStep = useSetStep()
+    const booted = useRef(false)
+    // 邀请链接（?room=XXXX）直接进房间，不用先点「多人对战」
+    useLayoutEffect(() => {
+        if (booted.current) return
+        booted.current = true
+        if (new URLSearchParams(location.search).get('room')) setStep(Step.Room)
+    }, [setStep])
     useEffect(() => { if (!inited) init() }, [inited, init])
     if (!inited) return <Loading />
     return <><Container /><ToastContainer /><Saving active={saving} /></>

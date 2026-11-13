@@ -60,14 +60,36 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0
 
+  apps/server:
+    dependencies:
+      '@remake/multi':
+        specifier: workspace:*
+        version: link:../../packages/multi
+      ws:
+        specifier: ^8.18.3
+        version: 8.22.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.2
+
   apps/web:
     dependencies:
+      '@remake/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@remake/data':
         specifier: workspace:*
         version: link:../../packages/data
       '@remake/hooks':
         specifier: workspace:*
         version: link:../../packages/hooks
+      '@remake/multi':
+        specifier: workspace:*
+        version: link:../../packages/multi
       '@remake/thirdparty-bili-toy':
         specifier: workspace:*
         version: link:../../thirdparty/bili-toy
@@ -164,6 +186,8 @@ importers:
       eslint-plugin-react-hooks:
         specifier: ^7.1.1
         version: 7.1.1(eslint@10.14.0)
+
+  packages/multi: {}
 
   packages/vitex: {}
 
