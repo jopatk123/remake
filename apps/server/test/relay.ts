@@ -1,5 +1,5 @@
 /**
- * 测试用中继：自己起一个临时服务器，节拍调到 150ms，跑完就杀。
+ * 测试用中继：自己起一个临时服务器，节拍调到 150ms、结算倒计时 1200ms，跑完就杀。
  *
  * 这样 `pnpm test:protocol` / `pnpm test:client` 不依赖手动开服务，
  * 也不会撞上 8787 上正在跑的那个开发中继。
@@ -15,6 +15,8 @@ export interface RelayHandle {
 }
 
 export const TICK = 150
+/** 结算倒计时在测试里调短，免得每个用例都等 5 秒 */
+export const RESULT = 1200
 
 export async function startRelay(
     env: Record<string, string> = {},
@@ -27,6 +29,7 @@ export async function startRelay(
             ...process.env,
             PORT: String(port),
             ROUND_MS: String(TICK),
+            RESULT_MS: String(RESULT),
             ENTER_TIMEOUT: '4000',
             ...env,
         },

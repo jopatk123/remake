@@ -3,6 +3,7 @@ import { summary as score } from '@remake/core/state'
 import { useGameState, useLogs } from '@remake/hooks'
 import { LOG_LIMIT, type LogLine } from '@remake/multi'
 import * as client from './client'
+import { deathEventId } from './death'
 import { useInMatch, useMulti } from './useMulti'
 import { toastAchvs } from '@/toast/Achv'
 
@@ -62,6 +63,7 @@ export function useMultiMatch(next: () => number[], ended: boolean) {
             summary: score(state),
             props: { charm, intelligence, strength, money, spirit },
             logs: lines,
+            death: state.life > 0 ? null : deathEventId(logs),
         })
     }, [active, state, logs])
 

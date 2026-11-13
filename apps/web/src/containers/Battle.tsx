@@ -7,14 +7,18 @@
  *
  * 推进是全自动的：不用点“继续”，服务端按节拍往下走。想停下来读文字时
  * 谁都可以按“暂停”，再按一次就继续；嫌快嫌慢谁都能调节拍。
+ *
+ * 全员阵亡后不马上切页面：先在结算浮层上播几秒倒计时，把名次和死因看完，
+ * 倒计时归零、服务端把房间收回大厅时才退回房间页。
  */
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useGameState, useGoHome, useNext } from '@remake/hooks'
-import { properties } from '@remake/data/etc/display'
 import { SPEEDS } from '@remake/multi'
 import { judgeGradeByValue } from '@/config'
 import { Log } from '@/components/LogList'
+import AnimatedProp from '@/components/AnimatedProp'
 import { DanmakuInput, DanmakuTrack } from '@/components/Danmaku'
+import { Ranking } from '@/components/Ranking'
 import { useJudge } from '@/hooks/judge'
 import {
     disconnect,
@@ -23,6 +27,7 @@ import {
 } from '@/multi/client'
 import { copyText } from '@/multi/clipboard'
 import { useMultiMatch } from '@/multi/play'
+import { useResultCountdown } from '@/multi/useMulti'
 import { toastMsg } from '@/toast'
 import type { Props, PlayerView } from '@remake/multi'
 import './Battle.css'
@@ -53,12 +58,7 @@ function PropRow({ props }: { props: Props | null }) {
             {PROP_ORDER.map(key => {
                 const value = props?.[key] ?? 0
                 const grade = judgeGradeByValue(key, value)
-                return (
-                    <li key={key} className={`grade-${grade}`}>
-                        <span className="name">{properties[key]}</span>
-                        <span className="value font-mono">{value}</span>
-                    </li>
-                )
+                return <AnimatedProp key={key} prop={key} value={value} grade={grade} />
             })}
         </ul>
     )
@@ -72,13 +72,13 @@ function MyProps() {
         <ul className="battle-props">
             {PROP_ORDER.map(key => {
                 const judge = map.get(key)
-                const value = judge?.value ?? 0
-                const grade = judge?.grade ?? 0
                 return (
-                    <li key={key} className={`grade-${grade}`}>
-                        <span className="name">{properties[key]}</span>
-                        <span className="value font-mono">{value}</span>
-                    </li>
+                    <AnimatedProp
+                        key={key}
+                        prop={key}
+                        value={judge?.value ?? 0}
+                        grade={judge?.grade ?? 0}
+                    />
                 )
             })}
         </ul>
@@ -90,10 +90,13 @@ interface MyColumnProps {
     age: number
     ended: boolean
     paused: boolean
+    over: boolean
+    tone: number
+    leading: boolean
     logs: { age: number; events: number[]; talents: number[]; achievements: number[] }[]
 }
 
-function MyColumn({ name, age, ended, paused, logs }: MyColumnProps) {
+function MyColumn({ name, age, ended, paused, over, tone, leading, logs }: MyColumnProps) {
     const ref = useRef<HTMLUListElement>(null)
     useLayoutEffect(() => {
         requestAnimationFrame(() => {
@@ -102,28 +105,41 @@ function MyColumn({ name, age, ended, paused, logs }: MyColumnProps) {
             el.scrollTop = el.scrollHeight
         })
     }, [logs])
-    const note = ended
-        ? '你的人生结束了，等其他人跑完…'
-        : paused
-          ? '已暂停'
-          : '自动推进中…'
+    const note = over
+        ? '本局结束，正在结算…'
+        : ended
+          ? '你的人生结束了，等其他人跑完…'
+          : paused
+            ? '已暂停'
+            : '自动推进中…'
+    const classes = [
+        'battle-col me',
+        `player-tone-${tone}`,
+        leading ? 'leading' : '',
+        ended ? 'dead' : '',
+    ].filter(Boolean).join(' ')
     return (
-        <section className="battle-col me">
+        <section className={classes}>
             <header className="battle-col-bar">
                 <span className="name">
                     {name}
                     <span className="tag font-mono">我</span>
+                    {leading && <span className="leader-tag">领先</span>}
                 </span>
                 <span className="age font-mono">{age}岁</span>
             </header>
             <MyProps />
             <ul className="logs battle-logs hide-scrollbar" ref={ref}>
                 {logs.map((log, index) => (
-                    <Log key={index} log={log} />
+                    <Log
+                        key={log.age}
+                        log={log}
+                        latest={index === logs.length - 1}
+                    />
                 ))}
             </ul>
             <footer className="battle-foot">
-                <span className="battle-note">{note}</span>
+                <span className="battle-note"><i className="status-dot" />{note}</span>
             </footer>
         </section>
     )
@@ -132,10 +148,22 @@ function MyColumn({ name, age, ended, paused, logs }: MyColumnProps) {
 function PeerColumn({
     player,
     paused,
+    tone,
+    leading,
 }: {
     player: PlayerView
     paused: boolean
+    tone: number
+    leading: boolean
 }) {
+    const ref = useRef<HTMLUListElement>(null)
+    useLayoutEffect(() => {
+        requestAnimationFrame(() => {
+            const el = ref.current
+            if (!el) return
+            el.scrollTop = el.scrollHeight
+        })
+    }, [player.logs])
     const state = !player.alive
         ? player.connected
             ? '已结束'
@@ -143,23 +171,37 @@ function PeerColumn({
         : paused
           ? '已暂停'
           : '自动推进中…'
+    const classes = [
+        'battle-col peer',
+        `player-tone-${tone}`,
+        player.alive ? '' : 'dead',
+        player.connected ? '' : 'offline',
+        leading ? 'leading' : '',
+    ].filter(Boolean).join(' ')
     return (
-        <section className={`battle-col peer ${player.alive ? '' : 'dead'}`}>
+        <section className={classes}>
             <header className="battle-col-bar">
-                <span className="name">{player.name}</span>
+                <span className="name">
+                    {player.name}
+                    {leading && <span className="leader-tag">领先</span>}
+                </span>
                 <span className="age font-mono">{player.age}岁</span>
             </header>
             <PropRow props={player.props} />
-            <ul className="logs battle-logs hide-scrollbar">
+            <ul className="logs battle-logs hide-scrollbar" ref={ref}>
                 {player.logs.length === 0 && (
                     <li className="battle-empty">还没迈出第一步…</li>
                 )}
                 {player.logs.map((log, index) => (
-                    <Log key={index} log={log} />
+                    <Log
+                        key={log.age}
+                        log={log}
+                        latest={index === player.logs.length - 1}
+                    />
                 ))}
             </ul>
             <footer className="battle-foot">
-                <span className="battle-note">{state}</span>
+                <span className="battle-note"><i className="status-dot" />{state}</span>
             </footer>
         </section>
     )
@@ -172,6 +214,10 @@ export function Battle() {
     const goHome = useGoHome()
 
     const room = mp.room
+    // 结算阶段留在这一页：服务端给「还剩多少毫秒」，本地把秒数走完
+    const left = useResultCountdown(
+        mp.room?.phase === 'over' ? (mp.room.resultLeft ?? 0) : null,
+    )
     const handlePause = useCallback(() => {
         if (!room) return
         sendPaused(!room.paused)
@@ -196,16 +242,20 @@ export function Battle() {
     const alive = players.filter(player => player.alive).length
     const cols = columnsFor(players.length)
     const waiting = room.waiting
+    const over = room.phase === 'over'
+    const leaderId = players.length > 1
+        ? [...players].sort((a, b) => b.age - a.age || b.summary - a.summary)[0]?.id
+        : null
     /** 还在等别人选天赋时，「继续」没有意义，按钮先不出现；收摊那一帧也不给按 */
     const canToggle = room.phase === 'playing' && waiting.length === 0
 
     return (
-        <div className="battle">
+        <div className={`battle ${room.paused ? 'is-paused' : ''}`}>
             <div className="battle-bar">
                 <span className="battle-code font-mono">{room.id}</span>
                 <span className="battle-round font-mono">已过 {room.round} 年</span>
                 <span className="battle-meta">
-                    {alive} / {players.length} 人还在跑
+                    {over ? '本局已结束' : `${alive} / ${players.length} 人还在跑`}
                 </span>
                 {/* 节拍谁都能改：读得快的人不必等，想细看的人也不必抢暂停 */}
                 <span className="battle-speed" role="group" aria-label="推进速度">
@@ -235,6 +285,14 @@ export function Battle() {
                 </button>
             </div>
 
+            <div className="battle-tick-track" aria-hidden="true">
+                <span
+                    key={`${room.round}-${room.interval}`}
+                    className={room.paused ? 'paused' : ''}
+                    style={{ ['--tick-duration' as string]: `${room.interval}ms` }}
+                />
+            </div>
+
             {/* 弹幕轨在顶栏下面，不压任何人的日志 */}
             <DanmakuTrack />
 
@@ -250,7 +308,7 @@ export function Battle() {
                 className="battle-stage"
                 style={{ ['--cols' as string]: cols }}
             >
-                {players.map(player =>
+                {players.map((player, index) =>
                     player.id === mp.id ? (
                         <MyColumn
                             key={player.id}
@@ -261,6 +319,9 @@ export function Battle() {
                             )}
                             ended={ended}
                             paused={room.paused}
+                            over={over}
+                            tone={index % 5}
+                            leading={player.id === leaderId}
                             logs={logs}
                         />
                     ) : (
@@ -268,12 +329,32 @@ export function Battle() {
                             key={player.id}
                             player={player}
                             paused={room.paused}
+                            tone={index % 5}
+                            leading={player.id === leaderId}
                         />
                     ),
                 )}
             </div>
 
             <DanmakuInput />
+
+            {/* 结算浮层：先停在对战页倒数几秒，到点才由服务端收回房间页 */}
+            {over && (
+                <div className="battle-result">
+                    <div className="battle-result-card">
+                        <Ranking
+                            items={room.result ?? []}
+                            me={mp.id}
+                            title="本局排名"
+                        />
+                        <p className="battle-result-count">
+                            {left > 0
+                                ? `${Math.max(1, Math.ceil(left / 1000))} 秒后回到房间…`
+                                : '正在回到房间…'}
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

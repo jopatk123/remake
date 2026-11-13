@@ -14,6 +14,7 @@ import {
     MAX_PLAYERS,
     MAX_SPEED,
     MIN_SPEED,
+    RESULT_MS,
     ROUND_MS,
 } from '@remake/multi'
 
@@ -23,6 +24,16 @@ type Send = (msg: ServerMessage) => void
 const ROUND = Math.max(60, Number(process.env.ROUND_MS ?? ROUND_MS))
 /** 开局后最多等多久就强制开跑，防止一个人卡在选天赋页把所有人挂住 */
 const ENTER_TIMEOUT = Math.max(1000, Number(process.env.ENTER_TIMEOUT ?? 60_000))
+/**
+ * 结算浮层停留时长。默认 5 秒，测试里调小：RESULT_MS=600 bun run src/index.ts
+ * 用环境变量而不是协议常量，是为了让同一份代码在测试和线上跑不同节奏。
+ */
+const RESULT_ENV = Number(process.env.RESULT_MS)
+const RESULT = Number.isFinite(RESULT_ENV)
+    ? Math.max(0, RESULT_ENV)
+    : RESULT_MS
+/** 结算期间重发房间视图的间隔：后加入 / 网络慢的人也能对上倒计时 */
+const RESULT_TICK = 500
 
 export interface Player {
     id: string
@@ -38,6 +49,8 @@ export interface Player {
     props: Props | null
     /** 最近几年的人生摘要，别人的屏幕靠它把这一列画出来 */
     logs: LogLine[]
+    /** 死因事件 id，活着时为 null；客户端上报，服务端只转发不解析 */
+    death: number | null
     send: Send
 }
 
@@ -48,6 +61,8 @@ export interface SyncPayload {
     summary: number
     props: Props
     logs: LogLine[]
+    /** 阵亡那年死因事件的 id，老客户端可能不带 */
+    death?: number | null
 }
 
 /**
@@ -56,6 +71,9 @@ export interface SyncPayload {
  * 推进是全自动的：服务端按 interval 的节拍发 tick，各端本地过一年再 sync 回来。
  * 谁都可能想停下来读一眼文字，所以 pause 不做权限 —— 任何人按下去都停，
  * 任何人再按一次都继续，这是唯一不会把人卡住的规则。节拍同理，谁都能调。
+ *
+ * 全员阵亡后不立刻收摊：先停在 over 阶段播 RESULT_MS 的结算倒计时，
+ * 让对战页把名次和死因看完，到点才回大厅等下一局。
  */
 export class Room {
     readonly id: string
@@ -71,10 +89,14 @@ export class Room {
     private entered = new Set<string>()
     /** 当前节拍：每年间隔毫秒。任何人改了都立刻重开定时器 */
     private interval = ROUND
-    /** 上一局的排名，回大厅后挂在房间上给房间页显示，开局清空 */
+    /** 上一局的排名，结算那一拍就填好，开局清空 */
     private result: RankingItem[] | null = null
     private clock: ReturnType<typeof setInterval> | null = null
     private enterTimer: ReturnType<typeof setTimeout> | null = null
+    /** 结算倒计时的截止时间与定时器，到点才收回大厅 */
+    private resultDeadline = 0
+    private resultTimer: ReturnType<typeof setTimeout> | null = null
+    private resultClock: ReturnType<typeof setInterval> | null = null
     /** 每人上一次发弹幕的时间，用来限流；离开就清掉 */
     private danmakuAt = new Map<string, number>()
 
@@ -110,6 +132,7 @@ export class Room {
             summary: 0,
             props: null,
             logs: [],
+            death: null,
             send,
         })
         if (host) this.hostId = id
@@ -130,8 +153,7 @@ export class Room {
             // 房主掉线就把帽子随机扔给还在的人，否则下一局没人能开
             if (this.hostId === id) this.transferHost()
             this.refreshWaiting()
-            this.checkOver()
-            this.broadcastRoom()
+            if (!this.checkOver()) this.broadcastRoom()
         } else {
             this.players.delete(id)
             this.entered.delete(id)
@@ -163,6 +185,7 @@ export class Room {
             player.summary = 0
             player.props = null
             player.logs = []
+            player.death = null
         }
         this.startClock()
         this.enterTimer = setTimeout(() => {
@@ -188,7 +211,7 @@ export class Room {
     /** 任意玩家都能调节拍，全房间跟着变 */
     setSpeed(id: string, ms: number) {
         const player = this.players.get(id)
-        if (!player) return
+        if (!player || this.phase !== 'playing') return
         if (!Number.isFinite(ms)) return
         const next = Math.min(MAX_SPEED, Math.max(MIN_SPEED, Math.round(ms)))
         if (next === this.interval) return
@@ -225,7 +248,7 @@ export class Room {
     sync(id: string, payload: SyncPayload) {
         const player = this.players.get(id)
         if (!player) return
-        // 结算那一拍可能还有在路上的 sync，落回大厅后就别再写进来了
+        // 结算那一拍可能还有在路上的 sync，进了结算 / 落回大厅就别再写进来了
         if (this.phase !== 'playing') return
         // 第一条 sync 代表这个人已经进入对局了，可以开始跑
         if (!this.entered.has(id)) {
@@ -238,14 +261,22 @@ export class Room {
         player.props = payload.props
         // 只留最近若干年：整列要塞进一屏，历史太长既没必要也压包
         player.logs = payload.logs.slice(-LOG_LIMIT)
+        // 死因只上报事件 id：校验完类型就存着，文本由各端查本地数据表渲染
+        if (
+            !payload.alive &&
+            typeof payload.death === 'number' &&
+            Number.isFinite(payload.death)
+        )
+            player.death = payload.death
         if (player.alive && !payload.alive) player.alive = false
-        this.checkOver()
-        this.broadcastRoom()
+        // 这一拍要是刚好结算了，checkOver 会自己广播带倒计时的房间视图
+        if (!this.checkOver()) this.broadcastRoom()
     }
 
     /** 房间被回收时一定要调，否则定时器会一直跑着占 CPU */
     dispose() {
         this.stopClock()
+        this.stopResult()
         if (this.enterTimer) clearTimeout(this.enterTimer)
         this.enterTimer = null
         this.players.clear()
@@ -294,11 +325,12 @@ export class Room {
         this.enterTimer = null
     }
 
-    private checkOver() {
-        if (this.phase !== 'playing') return
-        if (this.round === 0) return
+    /** 全员阵亡时结算；返回 true 表示刚结算完、房间视图已经广播过了 */
+    private checkOver(): boolean {
+        if (this.phase !== 'playing') return false
+        if (this.round === 0) return false
         // 全部阵亡才结算：比赛的是“谁走得远”，不是“谁活到最后”
-        if (this.alivePlayers().length > 0) return
+        if (this.alivePlayers().length > 0) return false
         this.phase = 'over'
         this.stopClock()
         if (this.enterTimer) clearTimeout(this.enterTimer)
@@ -311,10 +343,29 @@ export class Room {
                 age: p.age,
                 summary: p.summary,
                 rank: index + 1,
+                death: p.death,
             }))
-        // 结算完立刻收回大厅：排名跟着 room 一起下发，房间页上显示，
-        // 不占着对战界面等倒计时，房主想开下一局马上就能开。
-        this.resetToLobby()
+        // 先停在对战页的结算浮层上：最后一年刚滚出来的日志、名次和死因
+        // 都来得及看，倒计时到点才把房间收回大厅。
+        this.resultDeadline = Date.now() + RESULT
+        this.resultTimer = setTimeout(() => {
+            this.resultTimer = null
+            this.resetToLobby()
+        }, RESULT)
+        // 期间定期重发房间视图：后加入的人、网络慢的人都能对上剩余秒数
+        this.resultClock = setInterval(() => this.broadcastRoom(), RESULT_TICK)
+        this.broadcastRoom()
+        console.log(`[${this.id}] 结算，${RESULT}ms 后回到大厅`)
+        return true
+    }
+
+    /** 结算定时器用完就清，别让已回大厅的房间还在后台广播 */
+    private stopResult() {
+        if (this.resultTimer) clearTimeout(this.resultTimer)
+        if (this.resultClock) clearInterval(this.resultClock)
+        this.resultTimer = null
+        this.resultClock = null
+        this.resultDeadline = 0
     }
 
     /**
@@ -324,6 +375,7 @@ export class Room {
      */
     private resetToLobby() {
         if (this.phase !== 'over') return
+        this.stopResult()
         for (const [id, player] of this.players) {
             if (!player.connected) this.players.delete(id)
         }
@@ -344,6 +396,7 @@ export class Room {
             player.summary = 0
             player.props = null
             player.logs = []
+            player.death = null
         }
         // 房主还在就接着当，不在了才随机换人（结算期间掉线也算不在）
         const host = this.hostId ? this.players.get(this.hostId) : undefined
@@ -384,6 +437,7 @@ export class Room {
             summary: player.summary,
             props: player.props,
             logs: player.logs,
+            death: player.death,
         }
     }
 
@@ -401,6 +455,12 @@ export class Room {
                       .map(p => p.name)
                 : [],
             result: this.result,
+            // 用「剩余时长」而不是绝对时间戳，各端时钟不准也能对上；
+            // 每次下发都按截止时间重算，中途加入的人拿到的也是当前值。
+            resultLeft:
+                this.phase === 'over'
+                    ? Math.max(0, this.resultDeadline - Date.now())
+                    : null,
             players: [...this.players.values()].map(p => this.toView(p)),
         }
     }

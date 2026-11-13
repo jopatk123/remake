@@ -5,7 +5,7 @@
  */
 import { WebSocket } from 'ws'
 import type { RoomView, ServerMessage } from '@remake/multi'
-import { startRelay, TICK } from './relay'
+import { RESULT, startRelay, TICK } from './relay'
 
 const ROOM = 'TEST' + Math.floor(Math.random() * 900 + 100)
 
@@ -173,11 +173,16 @@ async function main() {
             { age: 1, events: [10009], talents: [1001], achievements: [] },
             { age: 30, events: [10010], talents: [], achievements: [1] },
         ],
+        death: 10003,
     })
     await sleep(150)
     ok(
         '甲被标记为阵亡',
         a.lastRoom()?.players.find(p => p.name === '甲')?.alive === false,
+    )
+    ok(
+        '死因 id 同步到对手列',
+        a.lastRoom()?.players.find(p => p.name === '甲')?.death === 10003,
     )
 
     const seen = b.lastRoom()?.players.find(p => p.name === '甲')
@@ -189,7 +194,7 @@ async function main() {
     await sleep(TICK * 3)
     ok('剩下的人照旧往前走', b.ticks.length > afterDeath)
 
-    console.log('\n[8] 结算')
+    console.log('\n[8] 结算：先停在倒计时')
     b.send({
         t: 'sync',
         age: 60,
@@ -198,18 +203,41 @@ async function main() {
         summary: 300,
         props: { charm: 2, intelligence: 2, strength: 2, money: 2, spirit: 0 },
         logs: [],
+        death: 40050,
     })
     await sleep(200)
     ok('触发结算', a.result().length === 2)
     ok('按年龄排名，乙第一', a.result()[0]?.name === '乙' && a.result()[0]?.age === 60)
     ok('甲排第二', a.result()[1]?.name === '甲')
+    ok(
+        '死因 id 跟着排名下发',
+        a.result()[0]?.death === 40050 && a.result()[1]?.death === 10003,
+    )
+    ok('结算阶段停在对战页', a.lastRoom()?.phase === 'over')
+    ok(
+        '倒计时剩余毫秒已下发',
+        (a.lastRoom()?.resultLeft ?? 0) > 0 &&
+            (a.lastRoom()?.resultLeft ?? Infinity) <= RESULT,
+    )
 
     const endRound = a.ticks.length
     await sleep(TICK * 3)
     ok('结束后不再推进', a.ticks.length === endRound)
+    ok('倒计时里还没回大厅', a.lastRoom()?.phase === 'over')
+    ok(
+        '期间会重发越来越少的剩余时间',
+        a.rooms.some(
+            r =>
+                r.phase === 'over' &&
+                r.resultLeft !== null &&
+                r.resultLeft < RESULT - 100,
+        ),
+    )
 
-    console.log('\n[9] 结算后立刻回到大厅')
-    ok('房间直接回到 lobby', a.lastRoom()?.phase === 'lobby')
+    console.log('\n[9] 倒计时到点才回到大厅')
+    await sleep(RESULT + 250)
+    ok('房间回到 lobby', a.lastRoom()?.phase === 'lobby')
+    ok('倒计时字段已清空', a.lastRoom()?.resultLeft === null)
     ok('年数清零', a.lastRoom()?.round === 0)
     ok(
         '所有人的年龄都归零',
@@ -218,6 +246,7 @@ async function main() {
     ok('没退出的人还在房间里', a.lastRoom()?.players.length === 2)
     ok('房主还在，可以再开一局', a.lastRoom()?.players.some(p => p.host) === true)
     ok('排名留在房间里给房间页显示', b.result().length === 2)
+    ok('死因也留在排名里', b.result()[0]?.death === 40050)
 
     a.send({ t: 'start' })
     await sleep(150)

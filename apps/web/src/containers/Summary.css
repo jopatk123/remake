@@ -13,6 +13,12 @@
             text-align: center;
             min-width: 4rem;
             user-select: none;
+            overflow: hidden;
+            border-radius: var(--radius-small);
+            background: var(--surface-background);
+            box-shadow: var(--shadow-card);
+            animation: judge-reveal 0.45s var(--ease-out) both;
+            animation-delay: calc(var(--judge-order, 0) * 70ms);
             span {
                 display: flex;
                 flex-direction: row;
@@ -39,5 +45,21 @@
         flex-direction: column;
         gap: calc(0.5rem * var(--ratio));
         width: 100%;
+
+        > li {
+            border-radius: var(--radius-small);
+            animation: talent-summary-in 0.4s var(--ease-out) both;
+            animation-delay: calc(0.25s + var(--reveal-order, 0) * 55ms);
+        }
     }
+}
+
+@keyframes judge-reveal {
+    from { opacity: 0; transform: translateY(0.75rem) scale(0.97); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes talent-summary-in {
+    from { opacity: 0; transform: translateX(-0.5rem); }
+    to { opacity: 1; transform: none; }
 }

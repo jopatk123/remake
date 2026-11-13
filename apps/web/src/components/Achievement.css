@@ -7,15 +7,18 @@
     gap: calc(1rem * var(--ratio-font));
     font-size: calc(1rem * var(--ratio-font));
     color: var(--grade-color);
-    background: var(--background, var(--base-background-color));
+    background: var(--surface-raised);
     cursor: pointer;
     user-select: none;
     border: 0.0625rem solid var(--grade-color);
+    border-radius: var(--radius-small);
+    box-shadow: 0 0.5rem 1.75rem color-mix(in srgb, var(--grade-color) 18%, transparent);
     box-sizing: border-box;
-    transition: all 0.2s ease-in-out;
+    transition: transform var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal) ease;
     svg {
         fill: var(--grade-color);
-        transition: fill 0.2s ease-in-out;
+        filter: drop-shadow(0 0 0.3rem color-mix(in srgb, var(--grade-color) 25%, transparent));
+        transition: fill var(--duration-normal) ease;
         stroke: none;
         width: calc(1.2rem * var(--ratio-font));
         height: calc(1.2rem * var(--ratio-font));

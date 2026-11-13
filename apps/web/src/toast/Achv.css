@@ -9,9 +9,9 @@
         display: flex;
         position: absolute;
         opacity: 1;
-        transition: all 0.2s ease-in-out;
+        transition: transform var(--duration-normal) var(--ease-out), opacity var(--duration-normal) ease;
         &.visible {
-            animation: achv-slide-in 0.2s ease-out forwards;
+            animation: achv-slide-in 0.36s var(--ease-spring) forwards;
         }
         &.hidden {
             animation: achv-fade-out 0.2s ease-out forwards;

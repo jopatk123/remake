@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Mode, Step, useGameReset, useModeChoose, useSetStep } from '@remake/hooks'
+import { RESULT_MS } from '@remake/multi'
 import { useMulti } from '@/multi/useMulti'
 import { connect, disconnect, start } from '@/multi/client'
 import { copyText } from '@/multi/clipboard'
 import { toastMsg } from '@/toast'
 import { DanmakuInput, DanmakuTrack } from '@/components/Danmaku'
+import { Ranking } from '@/components/Ranking'
 import './Room.css'
 
 const NAME_KEY = 'remake-mp-name'
@@ -179,37 +181,19 @@ export function Room() {
             {joined && (
                 <>
                     {result && (
-                        <div className="room-result">
-                            <h3>上一局排名</h3>
-                            <ol>
-                                {result.map(item => (
-                                    <li
-                                        key={item.id}
-                                        className={item.id === mp.id ? 'me' : ''}
-                                    >
-                                        <span className="rank font-mono">
-                                            {item.rank}
-                                        </span>
-                                        <span className="name">{item.name}</span>
-                                        <span className="age font-mono">
-                                            {item.age} 岁
-                                        </span>
-                                        <span className="score font-mono">
-                                            {item.summary}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ol>
-                            <p className="room-result-note">
-                                比的是谁走得远，年龄相同时看总评
-                            </p>
-                        </div>
+                        <Ranking
+                            items={result}
+                            me={mp.id}
+                            title="上一局排名"
+                            note="比的是谁走得远，年龄相同时看总评"
+                        />
                     )}
                     <ul className="room-players">
-                        {players.map(player => (
+                        {players.map((player, index) => (
                             <li
                                 key={player.id}
-                                className={player.id === mp.id ? 'me' : ''}
+                                className={`player-tone-${index % 5} ${player.id === mp.id ? 'me' : ''}`}
+                                style={{ ['--player-order' as string]: index }}
                             >
                                 <span className="name">
                                     {player.name}
@@ -249,7 +233,7 @@ export function Room() {
                             : '等房主开始…先把链接发给朋友也行'}
                     </p>
                     <p className="room-hint">
-                        开局后自动往前走，谁都可以暂停、谁都可以调速度；一结束就回到这里，接着开下一局
+                        开局后自动往前走，谁都可以暂停、谁都可以调速度；一结束先倒数 {RESULT_MS / 1000} 秒看排名和死因，再回到这里接着开下一局
                     </p>
                     <p className="room-hint">
                         房主要是掉线或者离开，房主会随机换给还在的人

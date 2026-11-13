@@ -4,7 +4,7 @@
     color: var(--base-text-color); 
 }
 
-html { transition: all 0.2s ease-in-out; }
+html { transition: background-color var(--duration-normal) ease, color var(--duration-normal) ease; }
 html[data-theme='light'] { color-scheme: light; }
 html[data-theme='dark'] { color-scheme: dark; }
 .hide-scrollbar,
@@ -23,8 +23,11 @@ body {
     place-items: center;
     margin: 1rem;
     padding: 0;
-    background: var(--base-background-color);
-    transition: all 0.2s ease-in-out;
+    background:
+        radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--color-info) 7%, transparent), transparent 32rem),
+        radial-gradient(circle at 88% 88%, color-mix(in srgb, var(--color-success) 6%, transparent), transparent 30rem),
+        var(--base-background-color);
+    transition: background-color var(--duration-normal) ease, color var(--duration-normal) ease;
 }
 
 html, body, button, input, select, textarea {
@@ -64,20 +67,32 @@ button {
     align-items: center;
     justify-content: center;
     user-select: none;
-    transition: all 0.2s ease-in-out;
+    border-radius: var(--radius-small);
+    box-shadow: 0 0.125rem 0 color-mix(in srgb, var(--style-color) 12%, transparent);
+    transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
     outline: none;
     -webkit-tap-highlight-color: transparent;
     @media (hover: hover) {
-        &:hover {
+        &:hover:not(:disabled) {
             background: var(--style-color);
             color: var(--style-background);
+            transform: translateY(-0.0625rem);
+            box-shadow: 0 0.35rem 1rem color-mix(in srgb, var(--style-color) 16%, transparent);
         }
     }
 
-    &:active {
+    &:active:not(:disabled) {
         background: var(--style-color);
         color: var(--style-background);
+        transform: translateY(0.0625rem) scale(0.99);
+        box-shadow: none;
         transition: none;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+        box-shadow: none;
     }
 
     &.primary { --style-color: var(--color-primary); }
@@ -105,12 +120,12 @@ input {
     padding: 0;
     margin: 0;
     border: none;
-    background: var(--base-background-color);
+    background: var(--surface-background);
     text-align: center;
     -moz-appearance: textfield;
     appearance: none;
     color: var(--base-text-color);
-    transition: all 0.2s ease-in-out;
+    transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
     &:focus { outline: none; }
     &::-webkit-outer-spin-button,
     &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -122,6 +137,20 @@ input[type="number"] {
     &::-webkit-inner-spin-button {
         -webkit-appearance: none;
         margin: 0; /* 移除某些浏览器下的默认留白 */
+    }
+}
+
+:where(button, input, [role='button'], a):focus-visible {
+    outline: 0.125rem solid var(--color-secondary);
+    outline-offset: 0.1875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }
 

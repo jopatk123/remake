@@ -15,7 +15,7 @@ import './Danmaku.css'
 const ROWS = 3
 
 export function DanmakuTrack() {
-    const { danmaku, id } = useMulti()
+    const { danmaku, id, room } = useMulti()
     /**
      * 只画最后几条。更旧的留在 store 里不清 —— 从对战页退回房间页
      * 组件要重挂载，要是每次都清空，刚聊的几句就白说了。
@@ -27,15 +27,21 @@ export function DanmakuTrack() {
             className="danmaku"
             style={{ '--rows': visible.length } as CSSProperties}
         >
-            {visible.map(item => (
-                <div
-                    key={item.id}
-                    className={`danmaku-item${item.from === id ? ' me' : ''}`}
-                >
-                    {/* 两个 span 必须贴着写：中间留换行会在 flex 里冒出一个空格 */}
-                    <span className="danmaku-name">【{item.name}】：</span><span className="danmaku-text">{item.text}</span>
-                </div>
-            ))}
+            {visible.map(item => {
+                const playerIndex = room?.players.findIndex(
+                    player => player.id === item.from,
+                ) ?? -1
+                const tone = playerIndex >= 0 ? playerIndex % 5 : 0
+                return (
+                    <div
+                        key={item.id}
+                        className={`danmaku-item player-tone-${tone}${item.from === id ? ' me' : ''}`}
+                    >
+                        {/* 两个 span 必须贴着写：中间留换行会在 flex 里冒出一个空格 */}
+                        <span className="danmaku-name">【{item.name}】：</span><span className="danmaku-text">{item.text}</span>
+                    </div>
+                )
+            })}
         </div>
     )
 }

@@ -16,17 +16,18 @@
             min-width: 6rem;
             user-select: none;
             color: var(--grade-color);
-            span {
+            border-radius: var(--radius-small);
+            overflow: hidden;
+            box-shadow: 0 0.2rem 0.75rem color-mix(in srgb, var(--grade-color) 8%, transparent);
+            > .name, > .value {
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 border: 0.0625rem solid var(--grade-color);
                 box-sizing: border-box;
                 height: 2rem;
-                &:first-child {
-                    border-bottom: none;
-                }
             }
+            > .name { border-bottom: none; }
             .name {
                 color: var(--base-background-color);
                 background-color: var(--grade-color);
@@ -63,7 +64,10 @@ ul.logs {
     min-width: 32rem;
     max-width: 100%;
     height: 100%;
-    border: 0.0625rem solid var(--base-text-color);
+    border: 0.0625rem solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--surface-background) 74%, transparent);
+    box-shadow: var(--shadow-card);
     box-sizing: border-box;
     > li.log {
         display: flex;
@@ -73,6 +77,19 @@ ul.logs {
         width: 100%;
         user-select: none;
         cursor: pointer;
+        border-radius: var(--radius-small);
+        transition: background-color var(--duration-normal) ease;
+
+        &.latest {
+            background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 80%);
+            box-shadow: inset 0.125rem 0 var(--color-primary);
+            animation: log-latest-in 0.38s var(--ease-out) both;
+
+            > .age { color: var(--color-primary); text-shadow: 0 0 0.75rem color-mix(in srgb, var(--color-primary) 28%, transparent); }
+        }
+
+        &.has-achievement:not(.latest) > .age { color: var(--color-grade-3); }
+
         > .age {
             flex-shrink: 0;
             width: 3rem;
@@ -117,53 +134,7 @@ ul.log-inner {
     }
 }
 
-.screen.play > ul.properties > li {
-    .value {
-        position: relative;
-        background-color: var(--base-background-color);
-        transition: background-color 0.5s ease;
-    }
-    &[class*="trend-up"] .value::after,
-    &[class*="trend-down"] .value::after {
-        content: '';
-        position: absolute;
-        right: 0.5rem;
-        top: 50%;
-        transform: translateY(-50%);
-        border-style: solid;
-        animation: triangle-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-    &[class*="trend-up"] .value::after {
-        border-width: 0 0.3125rem 0.375rem 0.3125rem;
-        border-color: transparent transparent var(--color-success) transparent;
-    }
-    &[class*="trend-down"] .value::after {
-        border-width: 0.375rem 0.3125rem 0 0.3125rem;
-        border-color: var(--color-error) transparent transparent transparent;
-    }
-    &[class*="trend-up-1"] .value { animation: flash-success-odd 0.5s ease-out forwards; }
-    &[class*="trend-up-0"] .value { animation: flash-success-even 0.5s ease-out forwards; }
-    &[class*="trend-down-1"] .value { animation: flash-error-odd 0.5s ease-out forwards; }
-    &[class*="trend-down-0"] .value { animation: flash-error-even 0.5s ease-out forwards; }
-}
-
-@keyframes flash-success-odd {
-    0% { background-color: color-mix(in srgb, var(--color-success) 30%, var(--base-background-color)); }
-    100% { background-color: var(--base-background-color); }
-}
-@keyframes flash-success-even {
-    0% { background-color: color-mix(in srgb, var(--color-success) 30%, var(--base-background-color)); }
-    100% { background-color: var(--base-background-color); }
-}
-@keyframes flash-error-odd {
-    0% { background-color: color-mix(in srgb, var(--color-error) 30%, var(--base-background-color)); }
-    100% { background-color: var(--base-background-color); }
-}
-@keyframes flash-error-even {
-    0% { background-color: color-mix(in srgb, var(--color-error) 30%, var(--base-background-color)); }
-    100% { background-color: var(--base-background-color); }
-}
-@keyframes triangle-pop {
-    0% { opacity: 0; transform: translateY(-50%) scale(0.5); }
-    100% { opacity: 1; transform: translateY(-50%) scale(1); }
+@keyframes log-latest-in {
+    from { opacity: 0.25; transform: translateY(0.4rem); }
+    to { opacity: 1; transform: none; }
 }

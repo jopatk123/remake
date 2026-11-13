@@ -7,6 +7,10 @@
  * - 推进是全自动的：服务端按固定节拍发 tick，谁都不用点“继续”。
  *   想停下来看文字就发 pause，任何人再发一次就能继续；
  *   嫌太快 / 太慢就发 speed，同样不分是谁改的。
+ * - 全员阵亡后先停在结算倒计时（RESULT_MS），到点才收回大厅。
+ * - 死因只上报事件 id，文本由各端查本地数据表，服务端仍然不懂内容。
+ *   上报的是「真正导致这一结局的事件」：分支死法取「你死了。」前面那条，
+ *   飞升 / 穿越这类自带结局文本的事件就取它自己。
  */
 
 export type Phase = 'lobby' | 'playing' | 'over'
@@ -50,6 +54,15 @@ export const SPEEDS = [3000, 1500, 800, 400] as const
 /** 节拍的合法区间，防止有人把值改成 1ms 把房间刷爆 */
 export const MIN_SPEED = 200
 export const MAX_SPEED = 5000
+
+/**
+ * 结算后留在对战页的时间（毫秒）。
+ *
+ * 全员阵亡那一拍如果立刻把房间放回大厅，最后一年刚滚出来的日志和名次
+ * 一闪就没了，太突然。改成先停在结算浮层上倒计时，到点再回房间页。
+ * 服务端可用 RESULT_MS 环境变量覆盖（测试里通常调小）。
+ */
+export const RESULT_MS = 5000
 
 /** 弹幕文本上限（字），超出的截断 */
 export const DANMAKU_LIMIT = 40
@@ -95,6 +108,11 @@ export interface PlayerView {
     props: Props | null
     /** 最近几年的日志，用于把对手这一列也画成一条人生 */
     logs: LogLine[]
+    /**
+     * 死因事件 id，活着时为 null。
+     * 只传 id 不传文本：和日志一样由各端查本地数据表渲染。
+     */
+    death: number | null
 }
 
 export interface RoomView {
@@ -113,10 +131,17 @@ export interface RoomView {
     /**
      * 上一局的排名，开局后清空。
      *
-     * 结算后房间立刻回到大厅，排名就挂在这里带去房间页 ——
-     * 不然打完那一瞬间界面就换掉了，谁赢了没人看得见。
+     * 结算那一拍就填好，对战页的倒计时浮层先用它播名次，
+     * 回到大厅后房间页接着显示 —— 打完那一瞬间界面不会突然换掉。
      */
     result: RankingItem[] | null
+    /**
+     * 距离回到大厅还剩多少毫秒，不在结算阶段时为 null。
+     *
+     * 用「剩余时长」而不是绝对时间戳，各端时钟不准也能对上。
+     * 每次下发 room 时由服务端按截止时间重算，中途加入的人也拿得到。
+     */
+    resultLeft: number | null
     players: PlayerView[]
 }
 
@@ -126,6 +151,8 @@ export interface RankingItem {
     age: number
     summary: number
     rank: number
+    /** 死因事件 id，和 PlayerView.death 同源 */
+    death: number | null
 }
 
 export type ClientMessage =
@@ -145,6 +172,8 @@ export type ClientMessage =
           summary: number
           props: Props
           logs: LogLine[]
+          /** 阵亡那年死因事件的 id，活着时给 null；缺省按 null 处理 */
+          death?: number | null
       }
 
 export type ServerMessage =

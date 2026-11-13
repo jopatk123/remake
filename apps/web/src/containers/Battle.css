@@ -9,6 +9,10 @@
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
+    background:
+        radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--color-info) 6%, transparent), transparent 34rem),
+        var(--base-background-color);
+    animation: battle-enter 0.35s var(--ease-out) both;
 }
 
 .battle-bar {
@@ -16,15 +20,22 @@
     flex-direction: row;
     align-items: center;
     gap: 0.5rem;
-    height: calc(2.25rem * var(--ratio));
+    height: calc(2.5rem * var(--ratio));
     flex-shrink: 0;
+    padding: 0 0.5rem;
+    border: 0.0625rem solid var(--border-subtle);
+    border-radius: var(--radius-small);
+    background: var(--surface-background);
+    box-shadow: var(--shadow-card);
 
     .battle-code {
         font-size: 0.95rem;
         letter-spacing: 0.15em;
         padding: 0 0.5rem;
-        border: 0.0625rem solid var(--base-text-color);
-        border-radius: 0.25rem;
+        border: 0.0625rem solid var(--border-subtle);
+        border-radius: var(--radius-small);
+        color: var(--color-primary);
+        background: var(--surface-muted);
         line-height: calc(1.7rem * var(--ratio));
     }
 
@@ -73,6 +84,25 @@
     }
 }
 
+.battle-tick-track {
+    height: 0.125rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 999rem;
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+
+    > span {
+        display: block;
+        width: 100%;
+        height: 100%;
+        transform-origin: left;
+        background: linear-gradient(90deg, var(--color-secondary), var(--color-primary));
+        animation: battle-tick var(--tick-duration, 1500ms) linear both;
+
+        &.paused { animation-play-state: paused; }
+    }
+}
+
 .battle-pause {
     flex-shrink: 0;
     display: flex;
@@ -109,18 +139,30 @@
     min-height: 0;
     padding: 0.375rem;
     box-sizing: border-box;
-    border: 0.0625rem solid var(--base-text-color);
-    border-radius: 0.25rem;
+    border: 0.0625rem solid var(--border-subtle);
+    border-top: 0.125rem solid var(--player-color);
+    border-radius: var(--radius-card);
+    background: var(--surface-background);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
+    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease, opacity var(--duration-normal) ease;
 
     &.me {
         border-color: var(--color-primary);
-        box-shadow: inset 0 0 0 0.0625rem var(--color-primary);
+        border-top-color: var(--player-color);
+        box-shadow: inset 0 0 0 0.0625rem var(--color-primary), var(--shadow-card);
+    }
+
+    &.leading:not(.dead) {
+        box-shadow: 0 0.3rem 1.2rem color-mix(in srgb, var(--player-color) 16%, transparent);
     }
 
     &.dead {
-        opacity: 0.55;
+        opacity: 0.68;
+        background: var(--surface-muted);
     }
+
+    &.offline { border-style: dashed; }
 
     .battle-col-bar {
         display: flex;
@@ -154,6 +196,17 @@
             flex-shrink: 0;
         }
 
+        .leader-tag {
+            flex-shrink: 0;
+            padding: 0.05rem 0.35rem;
+            border-radius: 999rem;
+            color: var(--player-color);
+            background: color-mix(in srgb, var(--player-color) 10%, transparent);
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            animation: leader-in 0.3s var(--ease-spring) both;
+        }
+
         .age {
             flex-shrink: 0;
             opacity: 0.85;
@@ -176,15 +229,16 @@
         flex-direction: column;
         color: var(--grade-color);
 
-        span {
+        > .name, > .value {
             display: flex;
             align-items: center;
             justify-content: center;
             border: 0.0625rem solid var(--grade-color);
             box-sizing: border-box;
             height: 1.625rem;
-            &:first-child { border-bottom: none; }
         }
+
+        > .name { border-bottom: none; }
 
         .name {
             color: var(--base-background-color);
@@ -255,9 +309,91 @@
     }
 
     .battle-note {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
         font-size: 0.85rem;
-        opacity: 0.6;
+        color: var(--text-muted);
         text-align: center;
+
+        .status-dot {
+            width: 0.375rem;
+            height: 0.375rem;
+            border-radius: 50%;
+            background: var(--player-color);
+            box-shadow: 0 0 0.4rem color-mix(in srgb, var(--player-color) 40%, transparent);
+        }
     }
 }
+
+.battle-col.dead .battle-note .status-dot,
+.battle-col.offline .battle-note .status-dot {
+    background: var(--color-error);
+    box-shadow: none;
+}
+
+/* 结算浮层：半透明，最后一年的人生还看得见，名次和死因压在中间 */
+.battle-result {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    background: color-mix(in srgb, var(--base-background-color) 72%, transparent);
+    backdrop-filter: blur(0.35rem);
+    animation: result-backdrop-in 0.3s ease-out both;
+
+    .battle-result-card {
+        width: min(30rem, 100%);
+        animation: result-card-in 0.5s var(--ease-spring) both;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        box-sizing: border-box;
+        background: var(--surface-raised);
+        border: 0.0625rem solid color-mix(in srgb, var(--color-grade-3) 45%, var(--border-subtle));
+        border-radius: var(--radius-card);
+        box-shadow: 0 0.5rem 2rem
+            color-mix(in srgb, var(--base-text-color) 18%, transparent);
+    }
+
+    .battle-result-count {
+        margin: 0;
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: bold;
+        color: var(--color-primary);
+    }
+}
+
+@keyframes battle-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes battle-tick {
+    from { transform: scaleX(0); opacity: 0.55; }
+    to { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes leader-in {
+    from { opacity: 0; transform: scale(0.75); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes result-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes result-card-in {
+    from { opacity: 0; transform: translateY(1rem) scale(0.94); }
+    to { opacity: 1; transform: none; }
+}
+
 

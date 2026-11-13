@@ -14,9 +14,19 @@
             justify-content: center;
             gap: 1rem;
             padding: 0;
+            border-radius: var(--radius-small);
             .talent {
                 width: 100%;
             }
+            &.talent-reveal {
+                animation: talent-reveal 0.42s var(--ease-out) both;
+                animation-delay: calc(var(--reveal-order, 0) * 45ms);
+            }
         }
     }
+}
+
+@keyframes talent-reveal {
+    from { opacity: 0; transform: translateY(0.65rem) scale(0.985); }
+    to { opacity: 1; transform: none; }
 }

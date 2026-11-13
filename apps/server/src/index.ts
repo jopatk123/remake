@@ -75,6 +75,7 @@ wss.on('connection', ws => {
                     summary: msg.summary,
                     props: msg.props,
                     logs: msg.logs,
+                    death: msg.death,
                 })
                 break
             default:

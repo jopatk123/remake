@@ -5,6 +5,7 @@
  * 两者字段一致（年龄 + 三类 id），所以都用这里这一套组件画，
  * 保证「自己看到的人生」和「别人看到你的人生」长得一样。
  */
+import { memo } from 'react'
 import { achievements, events, talents } from '@remake/data'
 import { format } from '@remake/vitex'
 
@@ -103,11 +104,22 @@ function LogAchievements({ items }: { items: number[] }) {
     )
 }
 
-export function Log({ log }: { log: LogLike }) {
+export const Log = memo(function Log({
+    log,
+    latest = false,
+}: {
+    log: LogLike
+    latest?: boolean
+}) {
     // 第一年是 1 岁，对应首次推进，偏移就是 age - 1
     const offset = log.age - 1
+    const classes = [
+        'log',
+        latest ? 'latest' : '',
+        log.achievements.length > 0 ? 'has-achievement' : '',
+    ].filter(Boolean).join(' ')
     return (
-        <li className="log">
+        <li className={classes}>
             <span className="age font-mono">{log.age}岁</span>
             <div className="content">
                 <LogTalents items={log.talents} />
@@ -116,13 +128,17 @@ export function Log({ log }: { log: LogLike }) {
             </div>
         </li>
     )
-}
+})
 
 export function Logs({ logs }: { logs: LogLike[] }) {
     return (
         <>
             {logs.map((log, index) => (
-                <Log key={index} log={log} />
+                <Log
+                    key={log.age}
+                    log={log}
+                    latest={index === logs.length - 1}
+                />
             ))}
         </>
     )

@@ -1,0 +1,117 @@
+/* 排名条：第一行是名次 / 名字 / 年龄 / 总评，第二行整行放死因 */
+.ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    box-sizing: border-box;
+    border: 0.0625rem solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    background: var(--surface-background);
+    box-shadow: var(--shadow-card);
+
+    h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        text-align: center;
+        letter-spacing: 0.08em;
+    }
+
+    .ranking-champion {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.75rem;
+        border-radius: var(--radius-small);
+        color: var(--color-grade-3);
+        background: linear-gradient(120deg, color-mix(in srgb, var(--color-grade-3) 12%, transparent), transparent);
+        animation: champion-reveal 0.55s var(--ease-spring) both;
+
+        .champion-label {
+            font-size: 0.7rem;
+            font-weight: bold;
+            letter-spacing: 0.35em;
+            opacity: 0.75;
+        }
+
+        strong { font-size: 1.65rem; letter-spacing: 0.04em; }
+        .champion-score { font-size: 0.8rem; opacity: 0.75; }
+    }
+
+    ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+
+        li {
+            display: grid;
+            grid-template-columns: 1.75rem 1fr auto auto;
+            align-items: center;
+            column-gap: 0.5rem;
+            row-gap: 0.1rem;
+            padding: 0.15rem 0.4rem;
+            font-size: 0.95rem;
+            border: 0.0625rem solid transparent;
+            border-radius: var(--radius-small);
+            animation: ranking-row-in 0.35s var(--ease-out) both;
+            animation-delay: calc(0.15s + var(--rank-order, 0) * 65ms);
+
+            &.rank-1 {
+                color: var(--color-grade-3);
+                background: color-mix(in srgb, var(--color-grade-3) 7%, transparent);
+                .rank, .age, .score { opacity: 1; }
+            }
+
+            &.rank-2 .rank { color: var(--color-grade-1); }
+            &.rank-3 .rank { color: var(--color-grade-2); }
+
+            &.me {
+                border-color: var(--color-primary);
+                .name { font-weight: bold; }
+            }
+
+            .rank {
+                opacity: 0.7;
+                font-weight: bold;
+                text-align: center;
+                &::before { content: '#'; font-size: 0.7em; margin-right: 0.05rem; }
+            }
+            .age { opacity: 0.8; }
+            .score {
+                font-size: 0.8rem;
+                opacity: 0.6;
+            }
+
+            .death {
+                grid-column: 2 / -1;
+                min-width: 0;
+                font-size: 0.8rem;
+                opacity: 0.65;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+    }
+
+    .ranking-note {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-align: center;
+    }
+}
+
+@keyframes champion-reveal {
+    from { opacity: 0; transform: scale(0.88); filter: brightness(1.35); }
+    to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes ranking-row-in {
+    from { opacity: 0; transform: translateX(-0.5rem); }
+    to { opacity: 1; transform: none; }
+}

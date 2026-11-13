@@ -13,7 +13,7 @@
         color: var(--grade-color);
         box-sizing: border-box;
         width: 100%;
-        transition: all 0.2s ease-in-out;
+        transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
         button {
             --style-color: var(--grade-color);
             flex: 1 0;
@@ -29,7 +29,7 @@
             width: 2rem;
             font-weight: bold;
             color: var(--grade-color);
-            transition: all 0.2s ease-in-out;
+            transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
         }
     }
     .points-detail {
@@ -89,7 +89,7 @@
                 align-items: center;
                 box-sizing: border-box;
                 font-weight: bold;
-                transition: all 0.2s ease-in-out;
+                transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
             }
             > span.name {
                 color: var(--base-background-color);

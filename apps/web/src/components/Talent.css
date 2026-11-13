@@ -1,38 +1,78 @@
 .talent {
     --color: var(--grade-color);
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1rem;
-    height: calc(2rem * var(--ratio));
+    padding: 0 1rem 0 1.2rem;
+    height: calc(2.25rem * var(--ratio));
     font-size: calc(1rem * var(--ratio-font));
     gap: 1rem;
     color: var(--color);
-    background: var(--background, var(--base-background-color));
+    background: var(--background, var(--surface-background));
     cursor: pointer;
     user-select: none;
-    border: 0.0625rem solid var(--grade-color);
+    overflow: hidden;
+    border: 0.0625rem solid color-mix(in srgb, var(--grade-color) 70%, var(--border-subtle));
+    border-radius: var(--radius-small);
+    box-shadow: 0 0.125rem 0.5rem color-mix(in srgb, var(--grade-color) 7%, transparent);
     box-sizing: border-box;
-    transition: all 0.2s ease-in-out;
+    transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0.1875rem;
+        background: var(--grade-color);
+        opacity: 0.8;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(105deg, transparent 30%, color-mix(in srgb, var(--grade-color) 18%, transparent), transparent 70%);
+        transform: translateX(-110%);
+        pointer-events: none;
+    }
+
+    > span { position: relative; z-index: 1; }
+
+    &.grade-2 { box-shadow: 0 0.2rem 0.9rem color-mix(in srgb, var(--grade-color) 12%, transparent); }
+    &.grade-3 { box-shadow: 0 0.25rem 1.1rem color-mix(in srgb, var(--grade-color) 20%, transparent); }
+
     &.selected {
         --color: var(--base-background-color);
         --background: var(--grade-color);
-        
+        box-shadow: 0 0.35rem 1.25rem color-mix(in srgb, var(--grade-color) 24%, transparent);
+        transform: translateY(-0.0625rem);
+
+        &::after { animation: talent-sweep 0.55s var(--ease-out) both; }
+
         @media (hover: hover) {
             &:hover { background: oklch(from var(--grade-color) calc(l + 0.1) c h); }
         }
-        &:active { 
+        &:active {
             background: oklch(from var(--grade-color) calc(l + 0.1) c h);
             transition: none;
         }
     }
+
     @media (hover: hover) {
-        &:hover { background: oklch(from var(--grade-color) calc(l + 0.5) c h); }
+        &:hover {
+            background: color-mix(in srgb, var(--grade-color) 10%, var(--surface-raised));
+            border-color: var(--grade-color);
+            transform: translateY(-0.1rem);
+            box-shadow: 0 0.45rem 1.2rem color-mix(in srgb, var(--grade-color) 16%, transparent);
+        }
     }
-    &:active { 
-        background: oklch(from var(--grade-color) calc(l + 0.5) c h);
+
+    &:active {
+        transform: scale(0.992);
         transition: none;
     }
+
     .talent-name { font-weight: bold; }
     .talent-description {
         color: oklch(from var(--color) calc(l + 0.1) c h);
@@ -43,20 +83,15 @@
         &::before, &::after { color: var(--color); }
     }
 }
+
 html[data-theme='dark'] {
-    .talent{ 
-        @media (hover: hover) {
-            &:hover { background: oklch(from var(--grade-color) calc(l - 0.5) c h); }
-            &.selected:hover { background: oklch(from var(--grade-color) calc(l - 0.1) c h); }
-        }
-        &:active { 
-            background: oklch(from var(--grade-color) calc(l - 0.5) c h); 
-            transition: none;
-        }
-        &.selected:active { 
-            background: oklch(from var(--grade-color) calc(l - 0.1) c h);
-            transition: none;
-        }
+    .talent {
         .talent-description { color: oklch(from var(--color) calc(l - 0.2) c h); }
+        &.selected .talent-description { color: oklch(from var(--color) calc(l - 0.2) c h); }
     }
+}
+
+@keyframes talent-sweep {
+    from { transform: translateX(-110%); }
+    to { transform: translateX(110%); }
 }

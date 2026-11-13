@@ -4,16 +4,21 @@ import { useEndJudge } from '@/hooks/judge'
 import { properties, judgeDisplay } from '@remake/data/etc/display'
 import { toastAchvs, toastMsg } from '@/toast'
 import Talent from '@/components/Talent'
+import AnimatedNumber from '@/components/AnimatedNumber'
 import './Summary.css'
 
 function Judges() {
     const judges = useEndJudge()
     return (
         <ul className="judge-list">
-            {judges.map(([key, { value, grade, level }]) => (
-                <li className={`${key} grade-${grade}`} key={key}>
+            {judges.map(([key, { value, grade, level }], index) => (
+                <li
+                    className={`${key} grade-${grade}`}
+                    key={key}
+                    style={{ ['--judge-order' as string]: index }}
+                >
                     <span className="property">{properties[key]}</span>
-                    <span className="value font-mono">{value}</span>
+                    <AnimatedNumber value={value} className="value font-mono" />
                     <span className="level">{judgeDisplay(key, level)}</span>
                 </li>
             ))}
@@ -43,8 +48,21 @@ function TalentList({ picked, picker }: TalentListProps) {
 
     return (
         <ul className="talent-list">
-            {Array.from(talents, id => (
-                <li key={id} onClick={() => picker(id)}>
+            {Array.from(talents, (id, index) => (
+                <li
+                    key={id}
+                    className="talent-reveal"
+                    style={{ ['--reveal-order' as string]: index }}
+                    onClick={() => picker(id)}
+                    onKeyDown={event => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return
+                        event.preventDefault()
+                        picker(id)
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={picked.has(id)}
+                >
                     <Talent id={id} selected={picked.has(id)} />
                 </li>
             ))}

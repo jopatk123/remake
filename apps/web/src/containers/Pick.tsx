@@ -34,8 +34,21 @@ export function Pick() {
     return (
         <div className="screen talent-pick">
             <ul className="talent-list">
-                {ps.map(id => (
-                    <li key={id} onClick={() => picker(id)}>
+                {ps.map((id, index) => (
+                    <li
+                        key={id}
+                        className="talent-reveal"
+                        style={{ ['--reveal-order' as string]: index }}
+                        onClick={() => picker(id)}
+                        onKeyDown={event => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return
+                            event.preventDefault()
+                            picker(id)
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={talents.has(id)}
+                    >
                         <Talent id={id} selected={talents.has(id)} />
                     </li>
                 ))}

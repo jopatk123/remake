@@ -1,0 +1,53 @@
+.animated-prop {
+    .value {
+        position: relative;
+        background-color: var(--surface-background);
+        transition: background-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
+    }
+
+    .number { font-variant-numeric: tabular-nums; }
+
+    .delta {
+        position: absolute;
+        right: 0.25rem;
+        top: 50%;
+        z-index: 1;
+        font-size: 0.68em;
+        font-weight: 800;
+        line-height: 1;
+        pointer-events: none;
+        animation: prop-delta-in 0.28s var(--ease-spring) both;
+
+        &.up { color: var(--color-success); }
+        &.down { color: var(--color-error); }
+    }
+
+    &[class*='trend-up'] .value { color: var(--color-success); }
+    &[class*='trend-down'] .value { color: var(--color-error); }
+    &[class*='trend-up-1'] .value { animation: flash-success-odd 0.5s ease-out forwards; }
+    &[class*='trend-up-0'] .value { animation: flash-success-even 0.5s ease-out forwards; }
+    &[class*='trend-down-1'] .value { animation: flash-error-odd 0.5s ease-out forwards; }
+    &[class*='trend-down-0'] .value { animation: flash-error-even 0.5s ease-out forwards; }
+}
+
+@keyframes prop-delta-in {
+    from { opacity: 0; transform: translate(0.25rem, -30%); }
+    to { opacity: 1; transform: translate(0, -50%); }
+}
+
+@keyframes flash-success-odd {
+    0% { background-color: color-mix(in srgb, var(--color-success) 28%, var(--surface-background)); box-shadow: inset 0 0 1rem color-mix(in srgb, var(--color-success) 20%, transparent); }
+    100% { background-color: var(--surface-background); box-shadow: none; }
+}
+@keyframes flash-success-even {
+    0% { background-color: color-mix(in srgb, var(--color-success) 28%, var(--surface-background)); box-shadow: inset 0 0 1rem color-mix(in srgb, var(--color-success) 20%, transparent); }
+    100% { background-color: var(--surface-background); box-shadow: none; }
+}
+@keyframes flash-error-odd {
+    0% { background-color: color-mix(in srgb, var(--color-error) 24%, var(--surface-background)); box-shadow: inset 0 0 1rem color-mix(in srgb, var(--color-error) 16%, transparent); }
+    100% { background-color: var(--surface-background); box-shadow: none; }
+}
+@keyframes flash-error-even {
+    0% { background-color: color-mix(in srgb, var(--color-error) 24%, var(--surface-background)); box-shadow: inset 0 0 1rem color-mix(in srgb, var(--color-error) 16%, transparent); }
+    100% { background-color: var(--surface-background); box-shadow: none; }
+}

@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { useLayoutEffect, useEffect } from 'react'
+import AnimatedProp from '@/components/AnimatedProp'
 import { useNext, useGotoSummary, useSetStep, Step } from '@remake/hooks'
 import { useJudge } from '@/hooks/judge'
-import { properties } from '@remake/data/etc/display'
 import { AutoInterval } from '@/config'
 import { toastAchvs } from '@/toast/Achv'
 import { Log } from '@/components/LogList'
@@ -10,59 +10,12 @@ import { useInMatch, useMulti } from '@/multi/useMulti'
 import { Battle } from './Battle'
 import './Play.css'
 
-interface PropProps {
-    prop: keyof typeof properties
-    value: number
-    grade: number
-}
-
-function Prop({ prop, value, grade }: PropProps) {
-    const prevRef = useRef<number>(value)
-    const [trend, setTrend] = useState<'up' | 'down' | 'normal'>('normal')
-    const [flip, setFlip] = useState(0)
-    const [displayValue, setDisplayValue] = useState<number>(value)
-    useEffect(() => {
-        const prev = prevRef.current
-        if (value === prev) return
-        const startValue = prevRef.current
-        prevRef.current = value
-        setTrend(value > prev ? 'up' : 'down')
-        setFlip(f => (f + 1) % 2)
-        let startTimestamp: number | null = null
-        const duration = 400
-        let end = false
-        const step = (timestamp: number) => {
-            if (!startTimestamp) startTimestamp = timestamp
-            const progress = timestamp - startTimestamp
-            const progressRatio = Math.min(progress / duration, 1)
-            const easeOutQuad = progressRatio * (2 - progressRatio)
-            const currentDec = startValue + (value - startValue) * easeOutQuad
-            setDisplayValue(Math.round(currentDec))
-            if (!end && progress < duration) requestAnimationFrame(step)
-        }
-        requestAnimationFrame(step)
-        const timer = setTimeout(() => setTrend('normal'), 2000)
-        return () => {
-            clearTimeout(timer)
-            setDisplayValue(value)
-            end = true
-        }
-    }, [value])
-
-    return (
-        <li className={`${prop} grade-${grade} trend-${trend}-${flip}`}>
-            <span className="name">{properties[prop]}</span>
-            <span className="value font-mono">{displayValue}</span>
-        </li>
-    )
-}
-
 function Properties() {
     const judges = useJudge()
     return (
         <ul className="properties">
             {judges.map(([key, { value, grade }]) => (
-                <Prop key={key} prop={key} value={value} grade={grade} />
+                <AnimatedProp key={key} prop={key} value={value} grade={grade} />
             ))}
         </ul>
     )
@@ -109,7 +62,11 @@ function Solo() {
                 ref={logRef}
             >
                 {logs.map((log, index) => (
-                    <Log key={index} log={log} />
+                    <Log
+                        key={log.age}
+                        log={log}
+                        latest={index === logs.length - 1}
+                    />
                 ))}
             </ul>
             <div className="controls">
@@ -137,9 +94,9 @@ export function Play() {
     const room = useMulti().room
     const setStep = useSetStep()
     /**
-     * 服务端在结算后会把房间收回大厅（phase 变回 lobby）。
-     * 这时候要主动退回房间页 —— 否则会掉进「不在对局里」的分支，
-     * 露出上一局的单人页面，而那个页面已经不能推进了。
+     * 结算阶段（over）仍留在对战页看倒计时；服务端数完秒把房间收回
+     * 大厅（phase 变回 lobby）后，才主动退回房间页 —— 否则会掉进
+     * 「不在对局里」的分支，露出上一局的单人页面，而那个页面已经不能推进了。
      */
     const lobby = room !== null && room.phase === 'lobby'
     useEffect(() => {

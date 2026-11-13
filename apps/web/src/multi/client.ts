@@ -160,6 +160,8 @@ export function sync(payload: {
     summary: number
     props: Props
     logs: LogLine[]
+    /** 致死事件 id，活着时给 null；服务端只转发，不解析内容 */
+    death?: number | null
 }) {
     send({ t: 'sync', ...payload })
 }

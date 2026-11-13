@@ -3,6 +3,25 @@
     --base-text-color: light-dark(#121314, #f9fafb);
     --base-background-color: light-dark(#f7f7f7, #121314);
     --base-shadow: light-dark(#00000010, #23456710);
+    --surface-background: light-dark(#ffffffb8, #1b1d21d9);
+    --surface-raised: light-dark(#ffffff, #23262c);
+    --surface-muted: light-dark(#eef0f3, #17191d);
+    --border-subtle: light-dark(#252a311f, #f9fafb24);
+    --text-muted: light-dark(#5e646d, #a4abb5);
+    --shadow-card: light-dark(0 0.5rem 1.5rem #1d27330c, 0 0.5rem 1.5rem #00000026);
+    --shadow-hover: light-dark(0 0.75rem 2rem #1d273317, 0 0.75rem 2rem #00000040);
+    --radius-small: 0.375rem;
+    --radius-card: 0.625rem;
+    --duration-fast: 140ms;
+    --duration-normal: 220ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --color-player-0: light-dark(#5470d6, #a9b8ff);
+    --color-player-1: light-dark(#b03fe4, #e09eff);
+    --color-player-2: light-dark(#d88918, #ffd078);
+    --color-player-3: light-dark(#158c78, #73dfc7);
+    --color-player-4: light-dark(#ce526c, #ff9fb1);
 
     --color-grade-0: light-dark(#4e5052, #f9fafb);
     --color-grade-1: light-dark(#4aa8da, #afe3ff);
@@ -20,3 +39,9 @@
 .grade-1 { --grade-color: var(--color-grade-1); }
 .grade-2 { --grade-color: var(--color-grade-2); }
 .grade-3 { --grade-color: var(--color-grade-3); }
+
+.player-tone-0 { --player-color: var(--color-player-0); }
+.player-tone-1 { --player-color: var(--color-player-1); }
+.player-tone-2 { --player-color: var(--color-player-2); }
+.player-tone-3 { --player-color: var(--color-player-3); }
+.player-tone-4 { --player-color: var(--color-player-4); }

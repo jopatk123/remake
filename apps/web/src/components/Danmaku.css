@@ -24,12 +24,16 @@
     line-height: var(--row);
     font-size: 0.9rem;
     white-space: nowrap;
-    animation: danmaku-in 0.18s ease-out both;
+    padding: 0 0.5rem;
+    border-radius: var(--radius-small);
+    background: color-mix(in srgb, var(--surface-background) 75%, transparent);
+    animation: danmaku-in 0.22s var(--ease-out) both;
 
     .danmaku-name {
         flex-shrink: 0;
         font-weight: bold;
-        opacity: 0.65;
+        color: var(--player-color);
+        opacity: 0.82;
     }
 
     .danmaku-text {

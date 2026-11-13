@@ -8,7 +8,7 @@
  */
 import { WebSocket } from 'ws'
 import { DANMAKU_GAP } from '@remake/multi'
-import { startRelay, TICK } from './relay'
+import { RESULT, startRelay, TICK } from './relay'
 
 const relay = await startRelay()
 
@@ -169,15 +169,29 @@ async function main() {
     ok('对手年龄同步过来', dead?.age === 25)
     ok('对手的人生日志同步过来', dead?.logs.length === 2)
 
-    console.log('\n[结算]')
-    client.sync({ age: 40, life: 0, alive: false, summary: 90, props: PROPS, logs: [] })
+    console.log('\n[结算倒计时]')
+    client.sync({
+        age: 40,
+        life: 0,
+        alive: false,
+        summary: 90,
+        props: PROPS,
+        logs: [],
+        death: 10003,
+    })
     await sleep(250)
     const snapOver = client.getSnapshot()
     const result = snapOver.room?.result ?? []
     ok('全员阵亡后拿到排名', result.length === 2)
     ok('自己排第一', result[0]?.name === '甲')
-    ok('打完直接回到大厅', snapOver.room?.phase === 'lobby')
-    ok('年数清零，不带进下一局', snapOver.round === 0)
+    ok('死因 id 跟着排名下发', result[0]?.death === 10003)
+    ok('先停在结算阶段，不切页面', snapOver.room?.phase === 'over')
+    ok('下发倒计时剩余毫秒', (snapOver.room?.resultLeft ?? 0) > 0)
+
+    await sleep(RESULT + 250)
+    const snapLobby = client.getSnapshot()
+    ok('倒计时到点才回到大厅', snapLobby.room?.phase === 'lobby')
+    ok('年数清零，不带进下一局', snapLobby.round === 0)
 
     peer.close()
     client.disconnect()

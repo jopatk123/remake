@@ -1,34 +1,83 @@
 .screen.home {
-    gap: 5rem;
+    gap: 4.5rem;
+
+    &::before {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        width: min(80vw, 42rem);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 68%);
+        filter: blur(1rem);
+        pointer-events: none;
+    }
+
     .title {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        .main { font-weight: bold; }
+        animation: home-title-in 0.65s var(--ease-out) both;
+
+        .main {
+            font-weight: bold;
+            filter: drop-shadow(0 0.5rem 1.5rem color-mix(in srgb, var(--color-primary) 12%, transparent));
+        }
+
+        .sub { opacity: 0.72; }
     }
+
     > .actions {
         position: fixed;
-        bottom: 1rem;
-        right: 1rem;
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        right: max(1rem, env(safe-area-inset-right));
         width: auto;
         display: flex;
         gap: 1rem;
-        >button {
+
+        > button {
             width: 2.5rem;
             height: 2.5rem;
             padding: 0.25rem;
+            background: var(--surface-background);
+            border-color: var(--border-subtle);
+            box-shadow: var(--shadow-card);
         }
     }
-    >.controls {
+
+    > .controls {
         flex-direction: column;
+        gap: 0.75rem;
+
         > div {
             flex: 1 0;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            animation: home-control-in 0.45s var(--ease-out) both;
+
+            &:nth-child(1) { animation-delay: 0.12s; }
+            &:nth-child(2) { animation-delay: 0.2s; }
+            &:nth-child(3) { animation-delay: 0.28s; }
             > button { flex: 1 0; }
         }
+
+        .focus {
+            border-color: color-mix(in srgb, var(--color-primary) 80%, var(--base-text-color));
+            box-shadow: 0 0.5rem 1.75rem color-mix(in srgb, var(--color-primary) 14%, transparent);
+            letter-spacing: 0.08em;
+        }
     }
+}
+
+@keyframes home-title-in {
+    from { opacity: 0; transform: translateY(-0.75rem) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes home-control-in {
+    from { opacity: 0; transform: translateY(0.75rem); }
+    to { opacity: 1; transform: none; }
 }
