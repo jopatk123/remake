@@ -1,4 +1,5 @@
 import type { Config } from '@remake/hooks'
+import { encounters } from '@remake/data/etc/encounter'
 export const dev = {} as Record<string, any>
 if (import.meta.env.MODE === 'development') {
     new URLSearchParams(window.location.search)
@@ -35,12 +36,13 @@ export const CharacterWeightKnife = dev.knife ?? 10
 // 唯一角色生成抽卡次数限制
 export const UniqueLimit = dev.unique ?? 10
 
-// 天赋抽取基础概率
+// 天赋抽取基础概率（权重，按总和归一）
+// 白 60% / 蓝 25% / 紫 10% / 橙 5%
 export const PullRateBase: Config['pull']['rate']['base'] = new Map([
-    [0, 889],
-    [1, 100],
-    [2, 10],
-    [3, 1],
+    [0, 600],
+    [1, 250],
+    [2, 100],
+    [3, 50],
 ])
 // 属性评级线
 export const JudgeLineMap = {
@@ -118,6 +120,11 @@ function wg(s: number, e: number) {
 export const UniquePropWeight = wg(0, 10)
 // 唯一角色天赋个数权重
 export const UniqueTalentWeight = wg(1, 5)
+// 年度奇遇概率（默认值见 @remake/data/etc/encounter，可用 ?box= / ?cave= 覆盖）
+export const EncounterList = encounters.map(({ key, rate, ...rest }) => ({
+    ...rest,
+    rate: typeof dev[key] === 'number' ? (dev[key] as number) : rate,
+}))
 
 export const config: Config = {
     features: Features,
@@ -139,6 +146,7 @@ export const config: Config = {
         count: CharacterPullCount,
         knife: CharacterWeightKnife,
     },
+    encounter: EncounterList,
     unique: {
         limit: UniqueLimit,
         config: {

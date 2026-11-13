@@ -112,13 +112,16 @@ export const useNext = () => {
     const [profile] = useProfile()
     const [state, setState] = useAtom(gameStateAtom)
     const [logs, setLogs] = useAtom(logsAtom)
+    const { encounter } = useConfig()
     const endRef = useRef(false)
     const [ended, setEnded] = useState(false)
     if (!state) throw new Error('Game state is not available.')
     const nexter = useCallback(() => {
         if (!state) throw new Error('Game state is not available.')
         if (endRef.current) throw new Error('Game state is already ended.')
-        const { state: s, ...result } = next(state, profile)
+        const { state: s, ...result } = next(state, profile, undefined, {
+            encounters: encounter,
+        })
         setState(s)
         const { age, ...props } = s.props.current
         const log = { ...result, props }
@@ -128,7 +131,7 @@ export const useNext = () => {
             setEnded(true)
         }
         return result.achievements
-    }, [state, profile, setState, setLogs])
+    }, [state, profile, setState, setLogs, encounter])
     return [{ logs, ended }, nexter] as const
 }
 

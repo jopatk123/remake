@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { atom, useSetAtom, useAtomValue } from 'jotai'
-import type { PullOptions, PullCharaOpt, UniqueGenCfg } from '@remake/core'
+import type { PullOptions, PullCharaOpt, UniqueGenCfg, Encounter } from '@remake/core'
 export interface Config {
     /** 功能锁 */
     features: number
@@ -22,6 +22,8 @@ export interface Config {
     pull: PullOptions
     /** 名人模式配置 */
     chara: PullCharaOpt
+    /** 年度奇遇（盒子、传承洞府等机缘） */
+    encounter: Encounter[]
     /** 唯一角色限制 */
     unique: {
         limit: number

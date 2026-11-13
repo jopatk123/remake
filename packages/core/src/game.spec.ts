@@ -48,6 +48,46 @@ describe('Achievement', () => {
         expect(result.state.events).toContain(10588) // 无事发生
     })
 
+    test('encounter', () => {
+        const state = produce(
+            createState(allocation, [1001, 1002]),
+            draft => {
+                draft.props = propsEffect(draft.props, { age: 10 })
+            },
+        )
+        // 概率 1 = 必定触发：拿到天赋 + 事件进日志
+        const hit = next(state, profile, undefined, {
+            encounters: [{ event: 11560, talent: 1048, rate: 1 }],
+        })
+        expect(hit.state.talents.has(1048)).toBe(true)
+        expect(hit.state.events.has(11560)).toBe(true)
+        expect(hit.events).toContain(11560)
+        expect(hit.talents).toContain(1048)
+        // 已经触发过该事件后不再重复触发
+        const again = next(hit.state, profile, undefined, {
+            encounters: [{ event: 11560, talent: 1048, rate: 1 }],
+        })
+        expect(again.events).not.toContain(11560)
+        // 奇遇发放的天赋不再走次年触发，日志里只出现一次
+        expect(again.talents).not.toContain(1048)
+        // 概率 0 不触发
+        const miss = next(state, profile, undefined, {
+            encounters: [{ event: 11560, talent: 1048, rate: 0 }],
+        })
+        expect(miss.state.talents.has(1048)).toBe(false)
+        // 超过 maxAge 后不再判定（盒子只能在 100 岁前拿到）
+        const over = next(state, profile, undefined, {
+            encounters: [{ event: 11560, talent: 1048, rate: 1, maxAge: 9 }],
+        })
+        expect(over.state.talents.has(1048)).toBe(false)
+        expect(over.events).not.toContain(11560)
+        // 正好等于 maxAge 时仍判定
+        const ok = next(state, profile, undefined, {
+            encounters: [{ event: 11560, talent: 1048, rate: 1, maxAge: 10 }],
+        })
+        expect(ok.state.talents.has(1048)).toBe(true)
+    })
+
     test('summary', () => {
         const state = produce(
             createState(allocation, [1001, 1111, 1130]),
