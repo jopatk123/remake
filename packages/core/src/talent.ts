@@ -3,6 +3,7 @@ import {
     type Talent,
     type TalentGrade,
     talents,
+    TRIBULATION_FAILURE_ID,
 } from '@remake/data'
 import type { Properties, GameState, ProfileState } from './state'
 import {
@@ -14,6 +15,13 @@ import { check } from '@remake/condition'
 import { pick, pickWeight, random, type RNG } from '@remake/vitex'
 import { produce } from 'immer'
 import type { TriggerResult } from './game'
+
+/** 渡劫失败相关事件：转世重修只在这些死亡上生效 */
+const TRIBULATION_DEATH_IDS = new Set<number>([
+    TRIBULATION_FAILURE_ID,
+    10392,
+    10408,
+])
 
 const Grades: TalentGrade[] = [0, 1, 2, 3] as const
 const GradeMap = Map.groupBy(
@@ -127,7 +135,7 @@ function chainReplace(t: Talent['id'], ts: Set<Talent['id']>, rng?: RNG) {
             return exclude(id, ts) == null
         })
         picked = pickWeight(filtered, rng)
-    } else if (r.grade) {
+    } else if (r.grade != null) {
         const filtered = GradeMap.get(r.grade)!.filter(id => {
             if (ts.has(id)) return false
             return exclude(id, ts) == null
@@ -262,7 +270,8 @@ export function trigger(
             if (skipTalents.includes(talent)) continue
             const times = draft.talentTriggers.get(talent) ?? 0
             draft.talentTriggers.set(talent, times + 1)
-            const { effect, randomPerStat, randomOne } = talents.get(talent)!
+            const meta = talents.get(talent)!
+            const { effect, randomPerStat, randomOne, grantFlag } = meta
             const pe = {} as Partial<Properties>
             if (effect) {
                 if (effect.CHR) pe.charm = effect.CHR
@@ -288,8 +297,10 @@ export function trigger(
                     (pe[key] ?? 0) +
                     random(randomOne.max, randomOne.min, rng)
             }
-            if (Object.keys(pe).length === 0) continue
-            draft.props = propsEffect(draft.props, pe, clampNegative)
+            if (Object.keys(pe).length)
+                draft.props = propsEffect(draft.props, pe, clampNegative)
+            if (grantFlag && !draft.cultivation.flags.includes(grantFlag))
+                draft.cultivation.flags.push(grantFlag)
         }
     })
     return { state: newState, triggers }
@@ -301,9 +312,17 @@ export interface ReviveResult {
     events: Event['id'][]
 }
 
+function diedToTribulationThisYear(state: GameState, age: number): boolean {
+    for (const id of TRIBULATION_DEATH_IDS) {
+        if (state.eventHistory.get(id)?.at(-1) === age) return true
+    }
+    return false
+}
+
 /**
  * 统一死亡复活结算。
- * 顺序固定：化神之资 → 橙色胶囊 → 轮回之外 → 死者苏生。
+ * 顺序按 revivePriority：化神之资 → 橙色胶囊 → 轮回之外 → 恶魔交易 →
+ * 死者苏生 → 诺贝尔奖 → 转世重修。
  */
 export function tryRevive(state: GameState): ReviveResult {
     // 只处理真正的死亡：飞升 / 超脱 / 离世 / 转世都不能被复活打断
@@ -318,6 +337,7 @@ export function tryRevive(state: GameState): ReviveResult {
         .sort(
             (a, b) => (a.revivePriority ?? 99) - (b.revivePriority ?? 99),
         )
+    const clampNegative = negativeClampEnabled(state)
     for (const talent of candidates) {
         if (talent.immortalUntil != null) {
             if (age >= talent.immortalUntil) continue
@@ -325,6 +345,16 @@ export function tryRevive(state: GameState): ReviveResult {
             const used = state.reviveUsed.get(talent.id) ?? 0
             if (used >= (talent.revives ?? 0)) continue
         }
+        if (
+            talent.reviveRequireEvent?.length &&
+            !talent.reviveRequireEvent.some(id => state.events.has(id))
+        )
+            continue
+        if (
+            talent.reviveOnTribulation &&
+            !diedToTribulationThisYear(state, age)
+        )
+            continue
         return {
             state: produce(state, draft => {
                 draft.life = 1
@@ -343,6 +373,25 @@ export function tryRevive(state: GameState): ReviveResult {
                         ...history,
                         age,
                     ])
+                }
+                const fx = talent.reviveEffect
+                if (fx) {
+                    const pe: Partial<Properties> = {}
+                    if (fx.CHR) pe.charm = fx.CHR
+                    if (fx.INT) pe.intelligence = fx.INT
+                    if (fx.STR) pe.strength = fx.STR
+                    if (fx.MNY) pe.money = fx.MNY
+                    if (fx.SPR) pe.spirit = fx.SPR
+                    if (fx.AGE) {
+                        const target = Math.max(0, age + fx.AGE)
+                        pe.age = target - age
+                    }
+                    if (Object.keys(pe).length)
+                        draft.props = propsEffect(
+                            draft.props,
+                            pe,
+                            clampNegative,
+                        )
                 }
             }),
             events:

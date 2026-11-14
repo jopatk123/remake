@@ -250,6 +250,8 @@ export const TUNING = {
     tribulationPerYear: 6,
     /** 引动飞升所需的大道数量 */
     daosRequired: 5,
+    /** 大道远超飞升门槛时，走超脱结局而不是普通飞升 */
+    daosTranscend: 8,
     /** 单重雷劫失败概率（失败会退回准备度，并可能被雷劫反噬） */
     trialFailRate: 0.06,
     /** 屡劫不成才会身死道消的失败次数门槛 */
@@ -290,6 +292,20 @@ export const TUNING = {
     decayDeathRate: 0.005,
     decayDeathCap: 0.15,
 } as const
+
+/** 具名大道。雷隙补悟只从这里补，不再发明「雷隙补悟N」凑数 */
+export const NAMED_DAOS = [
+    '水',
+    '火',
+    '金',
+    '木',
+    '土',
+    '空间',
+    '时间',
+    '混沌',
+    '生命',
+    '毁灭',
+] as const
 
 export const LAST_REALM = REALMS.length - 1
 /** 渡劫期是倒数第二个境界，飞升是最后一个 */

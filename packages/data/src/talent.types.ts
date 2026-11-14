@@ -84,6 +84,14 @@ export type Talent = {
     readonly negativeClamp?: boolean
     /** 到指定年龄时跳过若干年 */
     readonly skipAge?: { at: number; years: number }
+    /** 触发时写入的长期标记（修仙扩展） */
+    readonly grantFlag?: string
+    /** 复活前必须已经触发过这些事件之一（修仙扩展） */
+    readonly reviveRequireEvent?: number[]
+    /** 仅渡劫身死时才能复活（修仙扩展） */
+    readonly reviveOnTribulation?: boolean
+    /** 复活时额外属性变化（修仙扩展） */
+    readonly reviveEffect?: TalentEffect & { AGE?: number }
     /** 天赋触发上限 */
     readonly max: number
 }

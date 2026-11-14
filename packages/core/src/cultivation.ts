@@ -17,6 +17,8 @@ import {
     snapshot,
     talents as talentData,
     ENTRY_EVENT_IDS,
+    BOX_TALENT_ID,
+    BOX_ENTRY_EVENT_ID,
     MINOR_BROADCAST_VARIANTS,
     BREAKTHROUGH_SUCCESS_IDS,
     BREAKTHROUGH_FAILURE_IDS,
@@ -25,11 +27,16 @@ import {
     TRIAL_DONE_ID,
     ASCEND_EVENT_ID,
     TRIBULATION_FAILURE_ID,
-    DECAY_BROADCAST_ID,
+    LEAVE_WORLD_ID,
+    TRANSCEND_EVENT_ID,
+    REINCARNATION_ID,
+    DECAY_BROADCAST_IDS,
     ASCEND_READY_ID,
     ASCEND_OMEN_ID,
     BACKLASH_DEATH_ID,
     DECAY_DEATH_ID,
+    LONGEVITY_PILL_ID,
+    NAMED_DAOS,
     deathShield,
     softenRisk,
     cultivationLayers,
@@ -68,6 +75,25 @@ type Meta = Event & CultivationEventMeta
 
 function addDao(target: { daos: string[] }, name: string) {
     if (!target.daos.includes(name)) target.daos.push(name)
+}
+
+function nextNamedDao(daos: readonly string[]): string | null {
+    for (const name of NAMED_DAOS)
+        if (!daos.includes(name)) return name
+    return null
+}
+
+function tribulationDeathId(state: GameState): number {
+    // 转世重修已经用过一次后，第二次渡劫身死走转世结局，而不是再被雷劈死
+    if (state.talents.has(1134) && (state.reviveUsed.get(1134) ?? 0) >= 1)
+        return REINCARNATION_ID
+    return TRIBULATION_FAILURE_ID
+}
+
+function ascendEndingId(daos: readonly string[]): number {
+    return daos.length >= TUNING.daosTranscend
+        ? TRANSCEND_EVENT_ID
+        : ASCEND_EVENT_ID
 }
 
 /** 突破到指定大境界时，按百分比提升全属性（每个天赋只结算一次） */
@@ -166,10 +192,9 @@ export function applyCultivationEffects(
         if (isEntry && !d.started && age >= TUNING.autoStartAge) {
             d.started = true
             d.startAge = age
-            d.path = legacyPath ?? d.path
+            d.path = legacyPath ?? effect?.PATH ?? d.path
         }
-        if (legacyPath !== undefined) d.path = legacyPath
-        if (effect?.PATH !== undefined) d.path = effect.PATH
+        // 已经入道后不再改 PATH，避免传承洞府把凡人流拧成太古法门
 
         // 入道瞬间：太古遗脉 +30，并执行脱胎换骨
         if (!wasStarted && d.started) applyEntryGrowth(draft)
@@ -235,7 +260,9 @@ export function shouldAutoStart(state: GameState, age: number): boolean {
     )
 }
 
-export function pickEntryEvent(rng?: RNG): number {
+export function pickEntryEvent(state: GameState, rng?: RNG): number {
+    if (state.talents.has(BOX_TALENT_ID) && !state.events.has(BOX_ENTRY_EVENT_ID))
+        return BOX_ENTRY_EVENT_ID
     return pick(ENTRY_EVENT_IDS, rng) ?? ENTRY_EVENT_IDS[0]!
 }
 
@@ -271,7 +298,16 @@ export function advanceCultivation(
         // 长期卡在瓶颈、迟迟不能突破的修士，最终会在洞府里坐化。
         if (props.age > cfg.lifespan) {
             d.decay += 1
-            if (d.decay % 40 === 0) broadcasts.push(DECAY_BROADCAST_ID)
+            if (d.decay % 40 === 0)
+                broadcasts.push(
+                    variant(DECAY_BROADCAST_IDS, Math.floor(d.decay / 40)),
+                )
+            if (
+                d.decay === 40 &&
+                !draft.events.has(LONGEVITY_PILL_ID) &&
+                !d.flags.includes('延寿丹')
+            )
+                broadcasts.push(LONGEVITY_PILL_ID)
             if (d.decay > TUNING.decayDeathGrace) {
                 const risk = softenRisk(
                     Math.min(
@@ -313,7 +349,7 @@ export function advanceCultivation(
                         TUNING.deathRiskScale,
                 )
                 if (random(1000, 0, rng) < attemptRisk * 1000) {
-                    broadcasts.push(TRIBULATION_FAILURE_ID)
+                    broadcasts.push(tribulationDeathId(draft))
                     return
                 }
                 // 单重雷劫有小概率失败：退回准备度，且失败时雷劫反噬更凶
@@ -330,7 +366,7 @@ export function advanceCultivation(
                             TUNING.deathRiskScale,
                     )
                     if (random(1000, 0, rng) < risk * 1000)
-                        broadcasts.push(TRIBULATION_FAILURE_ID)
+                        broadcasts.push(tribulationDeathId(draft))
                     break
                 }
                 const stage = d.tribulationStage
@@ -346,19 +382,20 @@ export function advanceCultivation(
                         TRIAL_DONE_ID,
                         ASCEND_READY_ID,
                         ASCEND_OMEN_ID,
-                        ASCEND_EVENT_ID,
+                        ascendEndingId(d.daos),
                     )
                 }
             } else if (done) {
-                // 九劫已过但大道不足：不能死锁，每年在雷隙里补悟一条，
-                // 播报一条「尚缺」的提示，直到大道圆满再飞升。
-                addDao(d, `雷隙补悟${d.daos.length + 1}`)
+                // 九劫已过但大道不足：每年补一条尚未拥有的具名大道，
+                // 不再发明「雷隙补悟N」来凑飞升门槛。
+                const extra = nextNamedDao(d.daos)
+                if (extra) addDao(d, extra)
                 if (d.daos.length >= TUNING.daosRequired && !draft.ending) {
                     broadcasts.push(
                         TRIAL_DONE_ID,
                         ASCEND_READY_ID,
                         ASCEND_OMEN_ID,
-                        ASCEND_EVENT_ID,
+                        ascendEndingId(d.daos),
                     )
                 } else if (d.tribulationStage % 3 === 0) {
                     broadcasts.push(ASCEND_READY_ID)
@@ -367,7 +404,11 @@ export function advanceCultivation(
                 d.failures >= TUNING.trialDoomThreshold &&
                 random(1000, 0, rng) < 6
             ) {
-                broadcasts.push(TRIBULATION_FAILURE_ID)
+                broadcasts.push(
+                    props.spirit >= 12 && random(2, 0, rng) === 0
+                        ? LEAVE_WORLD_ID
+                        : tribulationDeathId(draft),
+                )
             }
             return
         }

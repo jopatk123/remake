@@ -37,7 +37,10 @@ export const STAGE_WEIGHT: Record<string, number> = {
 }
 
 /** 年龄池混入主池时的权重倍率：旧剧情保留但不喧宾夺主 */
-export const LEGACY_WEIGHT_SCALE = 0.35
+export const LEGACY_WEIGHT_SCALE = 0.15
+/** 神秘的小盒子：持有时百岁入道走开盒，而不是通用感悟 */
+export const BOX_TALENT_ID = 1048
+export const BOX_ENTRY_EVENT_ID = 10323
 
 /** 引擎直接触发、不进随机池的事件 id */
 export const ENTRY_EVENT_IDS = Array.from(
@@ -50,19 +53,20 @@ export const MINOR_BROADCAST_VARIANTS: readonly (readonly number[])[] = [
     [51201, 51214, 51215], // 筑基
     [51202, 51216, 51217], // 金丹
     [51203, 51218, 51219], // 元婴
-    [51204, 51218, 51219], // 化神
+    [51204, 51229, 51230], // 化神
     [51205, 51220, 51221], // 炼虚
-    [51206, 51222, 51212], // 合体
-    [51207, 51223, 51225], // 大乘
-    [51208, 51224, 51225], // 渡劫
+    [51206, 51222, 51231], // 合体
+    [51207, 51223, 51232], // 大乘
+    [51208, 51224, 51233], // 渡劫
 ]
 /** 兼容旧调用：每个境界的主播报 id */
 export const MINOR_BROADCAST_IDS = MINOR_BROADCAST_VARIANTS.map(ids => ids[0]!)
-export const BREAKTHROUGH_SUCCESS_IDS = [51209, 51226, 51212] as const
+export const BREAKTHROUGH_SUCCESS_IDS = [51209, 51226, 51234] as const
 export const BREAKTHROUGH_FAILURE_IDS = [51210, 51227, 51228] as const
 export const BREAKTHROUGH_SUCCESS_ID = BREAKTHROUGH_SUCCESS_IDS[0]
 export const BREAKTHROUGH_FAILURE_ID = BREAKTHROUGH_FAILURE_IDS[0]
 export const DECAY_BROADCAST_ID = 51211
+export const DECAY_BROADCAST_IDS = [51211, 51305, 51306] as const
 /** 九重雷劫逐重播报；51329 是单劫失败退阵，51330 是九劫尽过 */
 export const TRIAL_BROADCAST_IDS = Array.from(
     { length: 9 },
@@ -72,6 +76,9 @@ export const TRIAL_FAIL_ID = 51329
 export const TRIAL_DONE_ID = 51330
 export const ASCEND_EVENT_ID = 51300
 export const TRIBULATION_FAILURE_ID = 51301
+export const LEAVE_WORLD_ID = 51302
+export const TRANSCEND_EVENT_ID = 51303
+export const REINCARNATION_ID = 51304
 export const DECAY_EVENT_ID = 51305
 export const LIFESPAN_WARNING_ID = 51306
 export const LONGEVITY_PILL_ID = 51307

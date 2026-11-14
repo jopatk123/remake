@@ -36,4 +36,15 @@ describe('Event', () => {
         expect(result.state.events).toEqual(new Set([10003, 10000]))
         expect(result.triggers).toEqual([10003, 10000])
     })
+
+    test('恶魔的交易从 10000 统一复活', () => {
+        const result = trigger(
+            10003,
+            createState(allocation, [1148]),
+            profile,
+        )
+        expect(result.state.life).toBe(1)
+        expect(result.state.ending).toBeNull()
+        expect(result.triggers).toContain(20001)
+    })
 })

@@ -5,6 +5,10 @@ import type { Event } from '../dist/event'
 import type { Talent } from '../dist/talent'
 import type { Achievement } from '../dist/achievement'
 import { cultivationEvents } from './cultivation/events'
+import {
+    LEGACY_ALLOWED_AFTER_START,
+    LEGACY_BLOCKED_AFTER_START,
+} from './cultivation/legacy'
 import { cultivationTalents } from './cultivation/talents'
 import { cultivationAchievements } from './cultivation/achievements'
 
@@ -22,6 +26,15 @@ function merge<T>(base: Map<number, T>, extra: Map<number, T>): Map<number, T> {
 }
 
 export const events = merge<Event>(baseEvents, cultivationEvents)
+
+// 入道后屏蔽旧修仙链：只收录真实存在的事件，避免把空号写进自检清单
+for (let id = 10323; id <= 10409; id++) {
+    if (events.has(id)) LEGACY_BLOCKED_AFTER_START.add(id)
+}
+for (let id = 40001; id <= 40084; id++) {
+    if (events.has(id) && !LEGACY_ALLOWED_AFTER_START.has(id))
+        LEGACY_BLOCKED_AFTER_START.add(id)
+}
 
 // ── 旧事件文本覆盖 ──────────────────────────────────────────────
 // 11503 是「永不言弃」的 Rickroll 彩蛋，原词在 event.xlsx 里是英文。
@@ -101,6 +114,12 @@ const talentOverrides: Record<number, Partial<Talent>> = {
         revivePriority: 2,
         reviveEvent: 20011,
     },
+    // 紫色胶囊：与橙色同一套跳龄钩子，不再靠年龄表塞「时间跳跃」
+    1104: {
+        description: '跳过40~50岁',
+        condition: undefined,
+        skipAge: { at: 40, years: 10 },
+    },
     // 轮回之外：保留灵魂离体，并额外复活一次
     1135: {
         description: '死后灵魂离体，并可复活一次',
@@ -108,12 +127,36 @@ const talentOverrides: Record<number, Partial<Talent>> = {
         revivePriority: 3,
         reviveEvent: 20012,
     },
+    // 恶魔的交易：旧链靠 10000 分支加一条命，改走统一复活
+    1148: {
+        description: '所有属性-2，加一条命',
+        revives: 1,
+        revivePriority: 4,
+        reviveEvent: 20001,
+    },
     // 死者苏生：一条命 → 两条命
     1147: {
         description: '加两条命',
         revives: 2,
-        revivePriority: 4,
+        revivePriority: 5,
         reviveEvent: 20013,
+    },
+    // 诺贝尔奖：得过奖才能复活，不再绑在 10000 分支上
+    2024: {
+        description: '得过诺贝尔奖可复活一次',
+        revives: 1,
+        revivePriority: 6,
+        reviveEvent: 11504,
+        reviveRequireEvent: [10679, 10680, 10681],
+    },
+    // 转世重修：仅渡劫失败时重生，体质大损、年龄回退
+    1134: {
+        description: '渡劫失败重生',
+        revives: 1,
+        revivePriority: 7,
+        reviveEvent: 20409,
+        reviveOnTribulation: true,
+        reviveEffect: { STR: -1000, AGE: -500 },
     },
 }
 
@@ -133,13 +176,17 @@ for (const [id, event] of reviveEvents) {
     events.set(id, { id, event, grade: 3, NoRandom: true })
 }
 
-// 死者苏生改由引擎统一结算复活次数，移除旧事件里的单次复活分支，
-// 避免同一次死亡触发两次复活。
+// 复活改由引擎统一结算，移除旧死亡事件上的天赋分支，避免叠两次。
 const deathEvent = events.get(10000)
 if (deathEvent?.branch) {
     events.set(10000, {
         ...deathEvent,
-        branch: deathEvent.branch.filter(b => !b.condition.includes('1147')),
+        branch: deathEvent.branch.filter(
+            b =>
+                !b.condition.includes('1147') &&
+                !b.condition.includes('1148') &&
+                !b.condition.includes('2024'),
+        ),
     })
 }
 export const achievements = merge<Achievement>(

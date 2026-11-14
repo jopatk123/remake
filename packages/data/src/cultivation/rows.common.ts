@@ -126,6 +126,12 @@ export const COMMON_ROWS: string[] = [
     '51226|大境界破开那一瞬，你先听见的是自己的呼吸。|breakthrough|3|STR:2,INT:2,SPR:2,CULT:10|nr:1;kind:breakthrough;vg:brk9',
     '51227|道基震了一下又稳住，你吐出一口浊气。|crisis|1|STR:-1,SPR:-1,CULT:-8|nr:1;kind:omen;vg:brk9',
     '51228|这一关没过，你收了功，重新从第一层吐纳起。|crisis|1|SPR:-2,CULT:-10|nr:1;kind:omen;vg:brk9',
+    '51229|神念又远了一程，山下的炊烟也清楚了。|breakthrough|2|CULT:6|nr:1;kind:breakthrough;vg:brk4',
+    '51230|化神与元婴对坐一刻，气机又稳了半分。|breakthrough|2|CULT:6|nr:1;kind:breakthrough;vg:brk4',
+    '51231|三者又合紧一缕，山河跟着静了静。|breakthrough|2|CULT:6|nr:1;kind:breakthrough;vg:brk6',
+    '51232|万法又放下一件，你连「进境」都懒得再想。|breakthrough|3|CULT:6|nr:1;kind:breakthrough;vg:brk7',
+    '51233|雷云压低一线，你在阵眼里把道纹又拢了拢。|breakthrough|3|CULT:6,TRIB:6|nr:1;kind:breakthrough;vg:brk8',
+    '51234|这一关过了，眼前的天地忽然宽了一圈。|breakthrough|3|STR:2,INT:2,SPR:2,CULT:10|nr:1;kind:breakthrough;vg:brk9',
 
     // ── 九重雷劫：逐重播报，渡劫期不能再「一年就飞升」 ──────────────────
     '51320|第一重雷劫落下，护山大阵碎了，你连眼皮都没抬。|tribulation|2|STR:4,CULT:24|nr:1;kind:tribulation',

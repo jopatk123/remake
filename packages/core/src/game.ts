@@ -5,7 +5,11 @@ import type {
     CultivationSnapshot,
     EndingType,
 } from '@remake/data'
-import { talents, AchievementOpportunity as Ao } from '@remake/data'
+import {
+    talents,
+    AchievementOpportunity as Ao,
+    LEGACY_START_EVENTS,
+} from '@remake/data'
 import type { GameState, ProfileState } from './state'
 import { createState, nextProfile, propsEffect } from './state'
 import { summary as stateSummary } from './state'
@@ -114,6 +118,8 @@ export function next(
         )
             continue
         if (current.events.has(id)) continue
+        // 已经入道就不要再抽「开盒 / 洞府」当入道事件
+        if (current.cultivation.started && LEGACY_START_EVENTS.has(id)) continue
         if (random(1_000_000 - 1, 0, rng) >= rate * 1_000_000) continue
         current = etr(id, current, profile).state
         encounterEvents.push(id)
@@ -139,7 +145,7 @@ export function next(
 
     // ① 百岁自动入道：不拿盒子的人也能走上标准修行路
     if (shouldAutoStart(current, age)) {
-        const entryId = pickEntryEvent(rng)
+        const entryId = pickEntryEvent(current, rng)
         current = etr(entryId, current, profile).state
         encounterEvents.push(entryId)
     }

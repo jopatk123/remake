@@ -188,9 +188,8 @@ export const LEGACY_DEATH_EVENTS = new Set<number>([
  * 直接判死 —— 实测一局能在 401–404 岁连死四次。
  *
  * 修仙者的生死应该交给天劫、心魔与寿元软压力，而不是凡人的自然死亡。
- * 注意这里屏蔽的是「旧链自己的死亡 / 飞升结局」：入道之后，
- * 生死与飞升统一由新引擎判定，旧链雷劫仍可作为剧情事件出现，
- * 但不能再绕过九重雷劫直接结束本局。
+ * 入道之后旧链的境界推进 / 雷劫 / 飞升也不再进随机池，避免和新引擎
+ * 两套修仙剧情叠在同一年里。传承洞府（40061）和灵魂离体（40062）除外。
  */
 export const LEGACY_BLOCKED_AFTER_START = new Set<number>([
     10346, 10347, 10368, 10379, // 传统线「寿元终。」
@@ -209,6 +208,7 @@ export const LEGACY_BLOCKED_AFTER_START = new Set<number>([
     40050, 40059, // 太古线旧飞升结局（统一走引擎 51300）
     40054, // 碎丹
     40080, 40081, 40082, // 夺舍反杀 / 魂魄消散（结局统一由引擎管理）
+    20408, // 旧转世重修入口，改由引擎 20409 结算
 ])
 
 /** 全部旧链事件 id，用于自检时确认映射没有指向不存在的事件 */
@@ -223,3 +223,11 @@ export const LEGACY_EVENT_IDS = new Set<number>([
     ...LEGACY_DEATH_EVENTS,
     ...LEGACY_BLOCKED_AFTER_START,
 ])
+
+/** 入道后仍允许触发：传承洞府奇遇、轮回之外的灵魂离体 */
+export const LEGACY_ALLOWED_AFTER_START = new Set<number>([40061, 40062])
+
+for (const id of LEGACY_EVENT_IDS) {
+    if (!LEGACY_ALLOWED_AFTER_START.has(id))
+        LEGACY_BLOCKED_AFTER_START.add(id)
+}
