@@ -1,5 +1,6 @@
 /* 境界条：沿用 grade-N 的 --grade-color，明暗主题自动适配 */
 .cultivation-bar {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
@@ -96,6 +97,40 @@
         box-shadow: 0 0 1.25rem color-mix(in srgb, var(--grade-color) 35%, transparent);
     }
 
+    /* 突破 / 雷劫 / 飞升：只在这一年闪一次，不常驻 */
+    &::after {
+        content: '';
+        position: absolute;
+        inset: -0.125rem;
+        border-radius: inherit;
+        pointer-events: none;
+        opacity: 0;
+    }
+
+    &.fx-breakthrough::after {
+        animation: cultivation-ring 0.9s var(--ease-out) both;
+    }
+
+    &.fx-breakthrough .cultivation-title {
+        animation: cultivation-title-pop 0.9s var(--ease-spring) both;
+    }
+
+    &.fx-breakthrough .cultivation-fill {
+        animation: cultivation-fill-glow 0.9s var(--ease-out) both;
+    }
+
+    &.fx-tribulation::after {
+        animation: cultivation-ring-trial 0.75s ease-out both;
+    }
+
+    &.fx-tribulation .cultivation-track {
+        animation: cultivation-trial-shake 0.6s ease-out both;
+    }
+
+    &.fx-ascend::after {
+        animation: cultivation-ring-ascend 1.3s var(--ease-out) both;
+    }
+
     /* 多人列里空间紧张：收掉瓶颈提示与次要说明，只留境界和进度 */
     &.compact {
         padding: 0.35rem 0.5rem 0.4rem;
@@ -144,4 +179,124 @@ ul.logs li.log-omen {
 @keyframes log-ascend-in {
     from { opacity: 0; transform: scale(0.97); }
     to { opacity: 1; transform: none; }
+}
+
+/* 只有最新一年的突破 / 雷劫行播放入场动效，历史记录保持静态 */
+ul.logs li.log.latest .log-inner > li.log-breakthrough {
+    animation: log-breakthrough-in 0.55s var(--ease-out) both;
+}
+
+ul.logs li.log.latest .log-inner > li.log-tribulation {
+    animation: log-tribulation-in 0.65s ease-out both;
+}
+
+@keyframes cultivation-ring {
+    0% {
+        opacity: 0;
+        transform: scale(0.98);
+        border: 0.125rem solid var(--grade-color);
+    }
+    35% { opacity: 0.85; }
+    100% {
+        opacity: 0;
+        transform: scale(1.02);
+        border: 0.0625rem solid var(--grade-color);
+    }
+}
+
+@keyframes cultivation-ring-trial {
+    0% {
+        opacity: 0;
+        border: 0.125rem solid var(--grade-color);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--grade-color) 45%, transparent);
+    }
+    25% {
+        opacity: 1;
+        box-shadow: 0 0 1.1rem 0.15rem color-mix(in srgb, var(--grade-color) 40%, transparent);
+    }
+    100% {
+        opacity: 0;
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+@keyframes cultivation-ring-ascend {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+        border: 0.1875rem solid var(--grade-color);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--grade-color) 55%, transparent);
+    }
+    30% { opacity: 1; }
+    100% {
+        opacity: 0;
+        transform: scale(1.08);
+        border: 0.0625rem solid var(--grade-color);
+        box-shadow: 0 0 3rem 0.5rem color-mix(in srgb, var(--grade-color) 22%, transparent);
+    }
+}
+
+@keyframes cultivation-title-pop {
+    0% { transform: scale(1); }
+    35% {
+        transform: scale(1.08);
+        text-shadow: 0 0 0.75rem color-mix(in srgb, var(--grade-color) 45%, transparent);
+    }
+    100% {
+        transform: scale(1);
+        text-shadow: none;
+    }
+}
+
+@keyframes cultivation-fill-glow {
+    0% { filter: brightness(1); }
+    30% {
+        filter: brightness(1.65);
+        box-shadow: 0 0 0.65rem var(--grade-color);
+    }
+    100% {
+        filter: brightness(1);
+        box-shadow: none;
+    }
+}
+
+@keyframes cultivation-trial-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-0.125rem); }
+    40% { transform: translateX(0.125rem); }
+    60% { transform: translateX(-0.0625rem); }
+    80% { transform: translateX(0.0625rem); }
+}
+
+@keyframes log-breakthrough-in {
+    0% {
+        opacity: 0.35;
+        transform: translateY(0.25rem);
+        background: color-mix(in srgb, var(--grade-color) 26%, transparent);
+    }
+    55% {
+        opacity: 1;
+        background: color-mix(in srgb, var(--grade-color) 14%, transparent);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+        background: transparent;
+    }
+}
+
+@keyframes log-tribulation-in {
+    0% {
+        opacity: 0.35;
+        transform: translateX(-0.15rem);
+        background: color-mix(in srgb, var(--grade-color) 24%, transparent);
+    }
+    20% { transform: translateX(0.15rem); }
+    40% { transform: translateX(-0.1rem); }
+    60% { transform: translateX(0.1rem); }
+    100% {
+        opacity: 1;
+        transform: none;
+        background: transparent;
+    }
 }

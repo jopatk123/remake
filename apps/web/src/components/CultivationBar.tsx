@@ -5,6 +5,7 @@
  * 单人页和多人对战里「自己」那一列共用这一套，紧凑模式只收起次要信息，
  * 保证不遮挡日志（延续项目里「文字可读性优先」的约定）。
  */
+import { useEffect, useRef, useState } from 'react'
 import { useGameState } from '@remake/hooks'
 import {
     realmConfig,
@@ -15,8 +16,51 @@ import {
 } from '@remake/core'
 import './CultivationBar.css'
 
+type PulseKind = 'breakthrough' | 'tribulation' | 'ascend'
+
+interface CultivationSnapshot {
+    realm: number
+    minor: number
+    trial: number
+    started: boolean
+}
+
 export function CultivationBar({ compact = false }: { compact?: boolean }) {
     const state = useGameState()
+    const [pulse, setPulse] = useState<PulseKind | null>(null)
+    const previous = useRef<CultivationSnapshot | null>(null)
+    const pulseTimer = useRef(0)
+
+    /**
+     * 只在「境界变化 / 雷劫推进 / 入道」这些真正的节点播一次光效，
+     * 不从日志里反推，避免多人页每人每年都触发一次。
+     */
+    useEffect(() => {
+        if (!state) return
+        const c = state.cultivation
+        const next: CultivationSnapshot = {
+            realm: c.realm,
+            minor: c.minor,
+            trial: c.tribulationStage,
+            started: c.started,
+        }
+        const last = previous.current
+        previous.current = next
+        if (!last) return
+        let kind: PulseKind | null = null
+        if (!last.started && c.started) kind = 'breakthrough'
+        else if (c.realm > last.realm)
+            kind = c.realm >= 9 ? 'ascend' : 'breakthrough'
+        else if (c.tribulationStage > last.trial) kind = 'tribulation'
+        else if (c.minor > last.minor) kind = 'breakthrough'
+        if (!kind) return
+        setPulse(kind)
+        window.clearTimeout(pulseTimer.current)
+        pulseTimer.current = window.setTimeout(() => setPulse(null), 1000)
+    }, [state])
+
+    useEffect(() => () => window.clearTimeout(pulseTimer.current), [])
+
     if (!state) return null
     const c = state.cultivation
     if (!c.started) return null
@@ -39,7 +83,7 @@ export function CultivationBar({ compact = false }: { compact?: boolean }) {
 
     return (
         <div
-            className={`cultivation-bar grade-${cfg.grade} ${compact ? 'compact' : ''} ${ascended ? 'ascended' : ''}`}
+            className={`cultivation-bar grade-${cfg.grade} ${compact ? 'compact' : ''} ${ascended ? 'ascended' : ''} ${pulse ? `fx-${pulse}` : ''}`}
             title={cfg.description}
         >
             <div className="cultivation-head">

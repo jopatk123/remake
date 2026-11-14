@@ -18,6 +18,8 @@
     }
 
     .ranking-champion {
+        position: relative;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -27,6 +29,22 @@
         color: var(--color-grade-3);
         background: linear-gradient(120deg, color-mix(in srgb, var(--color-grade-3) 12%, transparent), transparent);
         animation: champion-reveal 0.55s var(--ease-spring) both;
+
+        /* 冠军卡扫过一道金色流光 */
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(
+                105deg,
+                transparent 35%,
+                color-mix(in srgb, var(--color-grade-3) 24%, transparent) 50%,
+                transparent 65%
+            );
+            transform: translateX(-120%);
+            animation: champion-shimmer 1.7s var(--ease-out) 0.45s both;
+        }
 
         .champion-label {
             font-size: 0.7rem;
@@ -129,6 +147,11 @@
 @keyframes champion-reveal {
     from { opacity: 0; transform: scale(0.88); filter: brightness(1.35); }
     to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes champion-shimmer {
+    from { transform: translateX(-120%); }
+    to { transform: translateX(120%); }
 }
 
 @keyframes ranking-row-in {

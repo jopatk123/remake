@@ -143,3 +143,23 @@ ul.log-inner {
     from { opacity: 0.25; transform: translateY(0.4rem); }
     to { opacity: 1; transform: none; }
 }
+
+/* 飞升 / 超脱：整屏天光从下方升起，播完自动消失，不遮挡日志 */
+.screen.play.ending-ascend::before,
+.screen.play.ending-transcend::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% 105%, color-mix(in srgb, var(--color-grade-3) 30%, transparent), transparent 58%),
+        radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--color-grade-3) 10%, transparent), transparent 62%);
+    animation: ascend-bloom 2.4s var(--ease-out) both;
+}
+
+@keyframes ascend-bloom {
+    0% { opacity: 0; transform: translateY(8%); }
+    35% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-4%); }
+}

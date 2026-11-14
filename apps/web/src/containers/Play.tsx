@@ -58,7 +58,9 @@ function Solo() {
     }, [auto, handleNext])
     const ending = state?.ending ? EndingName[state.ending] : null
     return (
-        <div className="screen play">
+        <div
+            className={`screen play ${state?.ending ? `ending-${state.ending}` : ''}`}
+        >
             <Properties />
             <CultivationBar />
             <ul

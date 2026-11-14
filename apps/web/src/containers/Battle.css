@@ -132,6 +132,7 @@
 }
 
 .battle-col {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
@@ -145,7 +146,7 @@
     background: var(--surface-background);
     box-shadow: var(--shadow-card);
     overflow: hidden;
-    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease, opacity var(--duration-normal) ease;
+    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease, opacity var(--duration-normal) ease, filter var(--duration-normal) ease;
 
     &.me {
         border-color: var(--color-primary);
@@ -155,11 +156,42 @@
 
     &.leading:not(.dead) {
         box-shadow: 0 0.3rem 1.2rem color-mix(in srgb, var(--player-color) 16%, transparent);
+
+        /* 领先者切换时扫一道光，不压住文字 */
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            border-radius: inherit;
+            pointer-events: none;
+            background: linear-gradient(
+                105deg,
+                transparent 34%,
+                color-mix(in srgb, var(--player-color) 18%, transparent) 50%,
+                transparent 66%
+            );
+            transform: translateX(-110%);
+            animation: battle-leader-sweep 0.75s var(--ease-out) both;
+        }
     }
 
     &.dead {
         opacity: 0.68;
         background: var(--surface-muted);
+        filter: saturate(0.55);
+
+        /* 阵亡那一帧红闪一下，随后回到低饱和 */
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            border-radius: inherit;
+            pointer-events: none;
+            background: color-mix(in srgb, var(--color-error) 22%, transparent);
+            animation: battle-dead-flash 0.65s ease-out both;
+        }
     }
 
     &.offline { border-style: dashed; }
@@ -389,6 +421,18 @@
 @keyframes leader-in {
     from { opacity: 0; transform: scale(0.75); }
     to { opacity: 1; transform: none; }
+}
+
+@keyframes battle-leader-sweep {
+    from { transform: translateX(-110%); opacity: 0; }
+    20% { opacity: 1; }
+    to { transform: translateX(110%); opacity: 0; }
+}
+
+@keyframes battle-dead-flash {
+    0% { opacity: 0; }
+    18% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 @keyframes result-backdrop-in {
