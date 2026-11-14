@@ -68,11 +68,13 @@ export function pull(
     )
     const result = []
     const map = new Map(Grades.map(g => [g, new Set(GradeMap.get(g))]))
+    const usedGroups = new Set<string>()
     if (profile.locked) {
         result.push(...profile.locked)
         if (result.length >= options.count) return result
         for (const talent of result) {
-            const { grade } = talents.get(talent)!
+            const { grade, group } = talents.get(talent)!
+            if (group) usedGroups.add(group)
             map.get(grade)!.delete(talent)
         }
     }
@@ -80,27 +82,28 @@ export function pull(
         const grade = pickWeight(rate, rng)! ?? 0
         const set = map.get(grade)!
         if (set.size === 0) continue
-        const id = pick(Array.from(set), rng)!
+        const candidates = Array.from(set).filter(id => {
+            const { group } = talents.get(id)!
+            return !group || !usedGroups.has(group)
+        })
+        if (candidates.length === 0) continue
+        const id = pick(candidates, rng)!
         result.push(id)
         set.delete(id)
+        const { group } = talents.get(id)!
+        if (group) usedGroups.add(group)
     }
     return result
 }
 
 export function exclude(talent: Talent['id'], list: Iterable<Talent['id']>) {
-    const { exclude } = talents.get(talent)!
+    const current = talents.get(talent)!
     for (const t of list) {
-        if (exclude) {
-            for (const e of exclude) {
-                if (t == e) return t
-            }
-        }
-        const excludeReverse = talents.get(t)!.exclude
-        if (excludeReverse) {
-            for (const e of excludeReverse) {
-                if (talent == e) return t
-            }
-        }
+        if (t === talent) continue
+        if (current.exclude?.includes(t)) return t
+        const target = talents.get(t)!
+        if (target.exclude?.includes(talent)) return t
+        if (current.group && target.group === current.group) return t
     }
     return null
 }

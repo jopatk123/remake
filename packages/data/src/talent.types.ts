@@ -60,6 +60,8 @@ export type Talent = {
     readonly points?: number
     /** 互斥天赋 */
     readonly exclude?: number[]
+    /** 互斥组：同组天赋只能获得一个 */
+    readonly group?: string
     /** 天赋盲盒 */
     readonly replacement?: TalentReplacement
     /** 天赋触发上限 */

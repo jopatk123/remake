@@ -104,7 +104,11 @@ export function next(
         ?.encounters ?? []) {
         if (maxAge != null && age > maxAge) continue
         if (minAge != null && age < minAge) continue
-        if (talent != null && current.talents.has(talent)) continue
+        if (
+            talent != null &&
+            (current.talents.has(talent) || exclude(talent, current.talents))
+        )
+            continue
         if (current.events.has(id)) continue
         if (random(1_000_000 - 1, 0, rng) >= rate * 1_000_000) continue
         current = etr(id, current, profile).state
