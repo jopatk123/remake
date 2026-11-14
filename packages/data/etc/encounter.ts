@@ -27,7 +27,7 @@ export interface EncounterConfig {
 
 export const encounters: EncounterConfig[] = [
     // 路边捡到小盒子：一生只得一次，且必须在 100 岁前捡到，才能在 100 岁开箱入道
-    { key: 'box', event: 11560, talent: 1048, rate: 0.01, maxAge: 99 },
+    { key: 'box', event: 11560, talent: 1048, rate: 0.005, maxAge: 99 },
     // 传承洞府：普通人也能继承《仙脉图录》。
     // 必须限制在 100 岁后：入道事件一触发，炼气读条和修为播报就会立刻开始，
     // 不设下限会出现 40 岁「炼气二层」和结婚生子新闻同屏的错位。
