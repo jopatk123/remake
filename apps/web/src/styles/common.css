@@ -149,9 +149,14 @@ input[type="number"] {
     *, *::before, *::after {
         scroll-behavior: auto !important;
         animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
     }
+
+    /* 保存提示靠呼吸动效显形，降级后补一个静态可见状态 */
+    .saving.active { opacity: 0.6; animation: none !important; }
 }
 
 @media (max-width: 32rem) { :root { font-size: 2.88vw; } }

@@ -11,7 +11,7 @@
  * 所有人结束后不马上切页面：先在结算浮层上播几秒倒计时，把名次和死因看完，
  * 倒计时归零、服务端把房间收回大厅时才退回房间页。
  */
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useGameState, useGoHome, useNext } from '@remake/hooks'
 import { talents } from '@remake/data'
 import { SPEEDS } from '@remake/multi'
@@ -50,6 +50,15 @@ const RARE_TALENT_LIMIT = 3
 
 /** 紫色及以上才算稀有，白色 / 蓝色不上顶部 */
 const RARE_TALENT_GRADE = 2
+
+/** 对手结束时给一条轻提示，不占用全屏特效 */
+const ENDING_NOTICE: Record<string, string> = {
+    death: '身死道消',
+    ascend: '渡劫飞升',
+    transcend: '超脱而去',
+    'leave-world': '踏碎虚空',
+    reincarnation: '转世重修',
+}
 
 /**
  * 列顶部的稀有天赋：橙色优先，其次紫色。
@@ -105,20 +114,28 @@ function columnsFor(count: number) {
     return 4
 }
 
-function PropRow({ props }: { props: Props | null }) {
+function PropRow({ props, interval }: { props: Props | null; interval: number }) {
     return (
         <ul className="battle-props">
             {PROP_ORDER.map(key => {
                 const value = props?.[key] ?? 0
                 const grade = judgeGradeByValue(key, value)
-                return <AnimatedProp key={key} prop={key} value={value} grade={grade} />
+                return (
+                    <AnimatedProp
+                        key={key}
+                        prop={key}
+                        value={value}
+                        grade={grade}
+                        interval={interval}
+                    />
+                )
             })}
         </ul>
     )
 }
 
 /** 自己那一列：走 useJudge，和单人页的属性条完全同源 */
-function MyProps() {
+function MyProps({ interval }: { interval: number }) {
     const judges = useJudge()
     const map = new Map(judges.map(([key, judge]) => [key, judge]))
     return (
@@ -131,6 +148,7 @@ function MyProps() {
                         prop={key}
                         value={judge?.value ?? 0}
                         grade={judge?.grade ?? 0}
+                        interval={interval}
                     />
                 )
             })}
@@ -148,6 +166,7 @@ interface MyColumnProps {
     leading: boolean
     talents: number[]
     logs: { age: number; events: number[]; talents: number[]; achievements: number[] }[]
+    interval: number
 }
 
 function MyColumn({
@@ -160,6 +179,7 @@ function MyColumn({
     leading,
     talents,
     logs,
+    interval,
 }: MyColumnProps) {
     const ref = useRef<HTMLUListElement>(null)
     useLayoutEffect(() => {
@@ -193,7 +213,7 @@ function MyColumn({
                 <RareTalents ids={talents} />
                 <span className="age font-mono">{age}岁</span>
             </header>
-            <MyProps />
+            <MyProps interval={interval} />
             <CultivationBar compact />
             <ul className="logs battle-logs hide-scrollbar" ref={ref}>
                 {logs.map((log, index) => (
@@ -216,11 +236,13 @@ function PeerColumn({
     paused,
     tone,
     leading,
+    interval,
 }: {
     player: PlayerView
     paused: boolean
     tone: number
     leading: boolean
+    interval: number
 }) {
     const ref = useRef<HTMLUListElement>(null)
     useLayoutEffect(() => {
@@ -254,7 +276,7 @@ function PeerColumn({
                 <RareTalents ids={player.talents ?? []} />
                 <span className="age font-mono">{player.age}岁</span>
             </header>
-            <PropRow props={player.props} />
+            <PropRow props={player.props} interval={interval} />
             <ul className="logs battle-logs hide-scrollbar" ref={ref}>
                 {player.logs.length === 0 && (
                     <li className="battle-empty">还没迈出第一步…</li>
@@ -285,6 +307,36 @@ export function Battle() {
     const left = useResultCountdown(
         mp.room?.phase === 'over' ? (mp.room.resultLeft ?? 0) : null,
     )
+    /** 对手的结局 / 阵亡只在本端给一条轻提示，不触发全屏特效 */
+    const peers = useRef(new Map<string, { alive: boolean; ending: string | null }>())
+    useEffect(() => {
+        if (!room) return
+        const next = new Map<string, { alive: boolean; ending: string | null }>()
+        for (const player of room.players) {
+            next.set(player.id, {
+                alive: player.alive,
+                ending: player.ending ?? null,
+            })
+        }
+        const last = peers.current
+        peers.current = next
+        // 刚进这一页时不补报历史结局，只报进来之后发生的变化
+        if (last.size === 0) return
+        for (const player of room.players) {
+            if (player.id === mp.id) continue
+            const before = last.get(player.id)
+            if (!before) continue
+            const ending = player.ending ?? null
+            if (ending && ending !== before.ending) {
+                toastMsg(
+                    `${player.name} ${ENDING_NOTICE[ending] ?? '结束了这一世'}`,
+                    `peer-ending-${player.id}`,
+                )
+            } else if (!player.alive && before.alive) {
+                toastMsg(`${player.name} 已身故`, `peer-death-${player.id}`)
+            }
+        }
+    }, [room, mp.id])
     const handlePause = useCallback(() => {
         if (!room) return
         sendPaused(!room.paused)
@@ -406,6 +458,7 @@ export function Battle() {
                             leading={player.id === leaderId}
                             talents={state ? [...state.talents] : []}
                             logs={logs}
+                            interval={room.interval}
                         />
                     ) : (
                         <PeerColumn
@@ -414,6 +467,7 @@ export function Battle() {
                             paused={room.paused}
                             tone={index % 5}
                             leading={player.id === leaderId}
+                            interval={room.interval}
                         />
                     ),
                 )}
