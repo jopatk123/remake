@@ -4,11 +4,19 @@ import {
     CultivationPath,
     BOX_ENTRY_EVENT_ID,
     TRIBULATION_FAILURE_ID,
+    TRIAL_REALM,
+    TUNING,
+    ASCEND_EVENT_ID,
+    TRANSCEND_EVENT_ID,
 } from '@remake/data'
 import { createState, propsEffect } from './state'
 import { exclude, replacement, tryRevive, trigger as ttr } from './talent'
 import { trigger as etr } from './event'
-import { applyCultivationEffects, pickEntryEvent } from './cultivation'
+import {
+    applyCultivationEffects,
+    pickEntryEvent,
+    advanceCultivation,
+} from './cultivation'
 import { next } from './game'
 import { produce } from 'immer'
 import { enableMapSet } from 'immer'
@@ -167,5 +175,33 @@ describe('天赋 / 事件修复', () => {
         expect(talents.get(3014)?.condition).toBe('DAO>=3')
         expect(talents.get(3018)?.condition).toBe('AGE>=500')
         expect(talents.get(3017)?.max).toBe(3)
+    })
+
+    test('九劫尽过：大道 5–11 走飞升，12 条走超脱', () => {
+        const finish = (n: number) => {
+            const state = produce(createState(allocation, [1048]), draft => {
+                draft.cultivation.started = true
+                draft.cultivation.realm = TRIAL_REALM
+                draft.cultivation.tribulationStage = TUNING.tribulationTrials
+                draft.cultivation.tribulationBaseline = 0
+                draft.cultivation.tribulation = TUNING.tribulationTrials *
+                    TUNING.tribulationStep
+                draft.cultivation.daos = Array.from(
+                    { length: n },
+                    (_, i) => `道${i}`,
+                )
+            })
+            return advanceCultivation(state)
+        }
+        expect(TUNING.daosRequired).toBe(5)
+        expect(TUNING.daosTranscend).toBe(12)
+        const eleven = finish(11)
+        expect(eleven.broadcasts).toContain(ASCEND_EVENT_ID)
+        expect(eleven.broadcasts).not.toContain(TRANSCEND_EVENT_ID)
+        const twelve = finish(12)
+        expect(twelve.broadcasts).toContain(TRANSCEND_EVENT_ID)
+        expect(twelve.broadcasts).not.toContain(ASCEND_EVENT_ID)
+        const five = finish(5)
+        expect(five.broadcasts).toContain(ASCEND_EVENT_ID)
     })
 })

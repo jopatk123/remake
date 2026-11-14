@@ -40,14 +40,18 @@ export function useMultiMatch(
             advanced.current = mp.round
             return
         }
-        advanced.current += 1
         try {
             const result = next()
-            toastAchvs(result.achievements)
-            emitRareFxFromNext(result, profile)
+            advanced.current += 1
+            try {
+                toastAchvs(result.achievements)
+                emitRareFxFromNext(result, profile)
+            } catch (error) {
+                console.error('[多人] 成就提示或特效失败', error)
+            }
         } catch (error) {
-            // 比如 400 岁复活后抽不到事件，兜底按阵亡处理，别让整个房间卡住
-            console.error('[多人] 推进失败，按阵亡处理', error)
+            // 引擎失败本拍重试，不再假装判死——空事件池已经不会抛错
+            console.error('[多人] 推进失败，本拍将重试', error)
         }
     }, [active, mp.round, ended, next, profile])
 

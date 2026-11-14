@@ -90,6 +90,7 @@ function tribulationDeathId(state: GameState): number {
     return TRIBULATION_FAILURE_ID
 }
 
+/** 九劫尽过时按当前大道数分流：未达超脱线走飞升，否则超脱 */
 function ascendEndingId(daos: readonly string[]): number {
     return daos.length >= TUNING.daosTranscend
         ? TRANSCEND_EVENT_ID
