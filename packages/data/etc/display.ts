@@ -1,9 +1,9 @@
 export const properties = {
     charm: '颜值',
-    intelligence: '智力',
+    intelligence: '悟性',
     strength: '体质',
     money: '家境',
-    spirit: '快乐',
+    spirit: '道心',
     age: '享年',
     summary: '总评',
 }
@@ -16,7 +16,7 @@ export const judges = {
     summary: s(jbase + '|筑基|金丹|元婴|飞升'),
     charm: s(jbase),
     money: s(jbase),
-    spirit: s('地狱|折磨|不幸|普通|幸福|极乐|天命'),
+    spirit: s('道心破碎|道心不稳|道心平常|道心初定|道心坚定|道心通明|道心天成'),
     intelligence: s(jbase + '|识海|元神|仙魂'),
     strength: s(jbase + '|凝气|筑基|金丹|元婴|仙体'),
     // 与 JudgeLineMap.age 的 16 档一一对应：500 岁之后还有仙寿档

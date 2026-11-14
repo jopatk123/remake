@@ -30,7 +30,7 @@ export const PickMin = dev.min ?? 3
 export const BasePoints = dev.points ?? 20
 // 单项属性点最大限制
 export const AllocLimit = dev.allocate ?? 10
-// 默认初始快乐
+// 默认初始道心
 export const DefaultSpirit = dev.spirit ?? 5
 // 天赋抽取个数
 export const PullCount = dev.pull ?? 10

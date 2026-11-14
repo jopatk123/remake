@@ -14,7 +14,7 @@ export interface Config {
     points: number
     /** 单项属性点最大限制 */
     allocate: number
-    /** 初始快乐 */
+    /** 初始道心 */
     spirit: number
     /** 模式选择限制 */
     mode: number

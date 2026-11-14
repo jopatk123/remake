@@ -5,13 +5,13 @@ export type EventGrade = 0 | 1 | 2 | 3
 export type EventEffect = {
     /** 颜值变化 */
     readonly CHR?: number
-    /** 智力变化 */
+    /** 悟性变化 */
     readonly INT?: number
     /** 体质变化 */
     readonly STR?: number
     /** 家境变化 */
     readonly MNY?: number
-    /** 快乐变化 */
+    /** 道心变化 */
     readonly SPR?: number
     /** 寿命变化 */
     readonly LIF?: number

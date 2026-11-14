@@ -2,7 +2,7 @@
 export type CharacterProperty = {
     /** 颜值 */
     readonly CHR: number
-    /** 智力 */
+    /** 悟性 */
     readonly INT: number
     /** 体质 */
     readonly STR: number

@@ -12,11 +12,11 @@ export type TalentEffect = {
     readonly MNY?: number
     /** 额外体质 */
     readonly STR?: number
-    /** 额外智力 */
+    /** 额外悟性 */
     readonly INT?: number
     /** 额外颜值 */
     readonly CHR?: number
-    /** 额外快乐 */
+    /** 额外道心 */
     readonly SPR?: number
     /** 额外随机属性 */
     readonly RND?: number
