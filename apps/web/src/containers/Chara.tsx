@@ -45,6 +45,14 @@ function Unique({ selected, picker }: UniqueProps) {
         <li
             className={`character ${selected ? 'selected' : ''}`}
             onClick={picker}
+            onKeyDown={event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                picker?.()
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selected}
         >
             <span className="name">独一无二的我</span>
             {unique && <Details detail={unique} />}
@@ -78,6 +86,14 @@ function Character({ id, selected, picker }: CharacterProps) {
         <li
             className={`character ${selected ? 'selected' : ''}`}
             onClick={() => picker?.(id)}
+            onKeyDown={event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return
+                event.preventDefault()
+                picker?.(id)
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selected}
         >
             <span className="name">{character.name}</span>
             <Details detail={character} />
@@ -119,7 +135,7 @@ export function Chara() {
                     都不是
                 </button>
                 <button
-                    className={ready ? 'primary' : 'error'}
+                    className={ready ? 'primary' : 'pending'}
                     onClick={handleSubmit}
                 >
                     开始新人生

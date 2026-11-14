@@ -31,20 +31,61 @@ export function Pick() {
     }
     if (!pulled)
         return (
-            <div className="screen talent-pick">
-                <button
-                    className="primary font-mono focus"
-                    onClick={() => puller()}
-                >
-                    {PullCount} 连抽!
-                </button>
+            <div className="screen talent-pick draw-screen">
+                <div className="draw-ritual">
+                    <span className="draw-kicker font-mono">
+                        命格将启 · {PullCount} 签待抽
+                    </span>
+                    <div className="draw-deck" aria-hidden="true">
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <span
+                                key={index}
+                                style={{ ['--card-index' as string]: index }}
+                            >
+                                <i>命</i>
+                            </span>
+                        ))}
+                    </div>
+                    <h1 className="font-display">一纸命书，等你落笔</h1>
+                    <p>
+                        从 {PullCount} 枚命格中择取数枚写入此生。
+                        <br />
+                        签落之前，谁也不知道下一世是谁。
+                    </p>
+                    <button
+                        className="primary font-mono focus"
+                        onClick={() => puller()}
+                    >
+                        {PullCount} 连抽!
+                    </button>
+                </div>
             </div>
         )
     const ps = dev.locked
         ? Array.from(new Set([...dev.locked, ...pulled]))
         : pulled
+    const requirement = min === max ? `${min}` : `${min}~${max}`
     return (
-        <div className="screen talent-pick">
+        <div className="screen talent-pick talent-result">
+            <div className="pick-head">
+                <div>
+                    <span className="pick-kicker font-mono">命格已现</span>
+                    <h1 className="font-display">择取此生天赋</h1>
+                </div>
+                <div className="pick-progress" aria-live="polite">
+                    <span className="pick-count">
+                        已选 <strong>{talents.size}</strong> / {requirement}
+                    </span>
+                    <span className="pick-slots" aria-hidden="true">
+                        {Array.from({ length: max }, (_, index) => (
+                            <i
+                                key={index}
+                                className={index < talents.size ? 'filled' : ''}
+                            />
+                        ))}
+                    </span>
+                </div>
+            </div>
             <ul className="talent-list">
                 {ps.map((id, index) => (
                     <li
@@ -70,7 +111,7 @@ export function Pick() {
                 ))}
             </ul>
             <button
-                className={enabled ? 'primary' : 'error'}
+                className={enabled ? 'primary' : 'pending'}
                 onClick={handleSubmit}
             >
                 {msg}

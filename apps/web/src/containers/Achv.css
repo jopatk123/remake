@@ -70,14 +70,18 @@
             gap: 0.5rem;
             box-sizing: border-box;
             > li.achievement {
+                position: relative;
                 margin-right: 0.0625rem;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                justify-content: center;
+                gap: 0.15rem;
+                min-height: 5.25rem;
                 color: var(--grade-color);
-                border: 0.0625rem solid color-mix(in srgb, var(--grade-color) 65%, var(--border-subtle));
+                border: 0.0625rem solid color-mix(in srgb, var(--grade-color) 55%, var(--border-subtle));
                 border-radius: var(--radius-small);
-                padding: 0 0.0625rem;
+                padding: 0.55rem 0.4rem;
                 box-sizing: border-box;
                 transform-style: preserve-3d;
                 position: relative;
@@ -98,31 +102,44 @@
                     justify-content: center;
                 }
                 >.description {
-                    height: 1.5rem;
+                    min-height: 1.5rem;
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    font-size: 0.82rem;
+                    text-align: center;
+                    line-height: 1.5;
                 }
-                &::before{
-                    content: '';
-                    display: block;
+
+                >.achievement-state {
                     position: absolute;
-                    width: 100%;
-                    height: 100%;
-                    left: 0;
-                    top: 0;
-                    padding: 0.0625rem;
-                    margin: -0.0625rem;
-                    transform: translateZ(1px); 
-                    background: var(--base-background-color);
-                    opacity: 0.5;
+                    top: 0.35rem;
+                    right: 0.35rem;
+                    padding: 0.05rem 0.25rem;
+                    color: var(--text-muted);
+                    border: 0.0625rem solid var(--border-subtle);
+                    border-radius: 999px;
+                    font-size: 0.62rem;
+                    line-height: 1.2;
+                    letter-spacing: 0.06em;
+                    background: var(--surface-raised);
+                }
+
+                &.colled >.achievement-state {
+                    color: var(--grade-color);
+                    border-color: color-mix(in srgb, var(--grade-color) 42%, var(--border-subtle));
+                    background: color-mix(in srgb, var(--grade-color) 8%, transparent);
+                }
+                &:not(.colled) {
+                    opacity: 0.58;
+                    border-style: dashed;
+                    background: transparent;
                 }
                 &.colled {
-                    &::before{
-                        transform: translateZ(-1px); 
-                        background: var(--grade-color);
-                        opacity: 0.15;
-                    }
+                    background:
+                        linear-gradient(135deg, color-mix(in srgb, var(--grade-color) 8%, transparent), transparent 55%),
+                        var(--surface-background);
+                    box-shadow: 0 0.3rem 0.9rem color-mix(in srgb, var(--grade-color) 7%, transparent);
                 }
             }
         }

@@ -1,38 +1,43 @@
 :root {
     color-scheme: light dark;
-    --base-text-color: light-dark(#121314, #f9fafb);
-    --base-background-color: light-dark(#f7f7f7, #121314);
-    --base-shadow: light-dark(#00000010, #23456710);
-    --surface-background: light-dark(#ffffffb8, #1b1d21d9);
-    --surface-raised: light-dark(#ffffff, #23262c);
-    --surface-muted: light-dark(#eef0f3, #17191d);
-    --border-subtle: light-dark(#252a311f, #f9fafb24);
-    --text-muted: light-dark(#5e646d, #a4abb5);
-    --shadow-card: light-dark(0 0.5rem 1.5rem #1d27330c, 0 0.5rem 1.5rem #00000026);
-    --shadow-hover: light-dark(0 0.75rem 2rem #1d273317, 0 0.75rem 2rem #00000040);
-    --radius-small: 0.375rem;
-    --radius-card: 0.625rem;
+    --base-text-color: light-dark(#1d231f, #f4f0e4);
+    --base-background-color: light-dark(#f3efe4, #121613);
+    --base-shadow: light-dark(#2a241708, #00000024);
+    --surface-background: light-dark(#fffdf7d9, #1b201cd9);
+    --surface-raised: light-dark(#fffdf8, #232923);
+    --surface-muted: light-dark(#e9e3d5, #171c18);
+    --border-subtle: light-dark(#303b3124, #f4f0e42b);
+    --text-muted: light-dark(#5b655e, #aab4aa);
+    --shadow-card: light-dark(0 0.5rem 1.5rem #3a311b10, 0 0.5rem 1.5rem #0000002e);
+    --shadow-hover: light-dark(0 0.85rem 2.2rem #3a311b1c, 0 0.75rem 2rem #0000004a);
+    --radius-small: 0.5rem;
+    --radius-card: 0.8rem;
     --duration-fast: 140ms;
     --duration-normal: 220ms;
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-    --color-player-0: light-dark(#5470d6, #a9b8ff);
-    --color-player-1: light-dark(#b03fe4, #e09eff);
-    --color-player-2: light-dark(#d88918, #ffd078);
-    --color-player-3: light-dark(#158c78, #73dfc7);
-    --color-player-4: light-dark(#ce526c, #ff9fb1);
+    /* 墨绿为主，黛蓝为辅，朱砂与鎏金只做点题 */
+    --color-primary: light-dark(#2f6b58, #93dcc4);
+    --on-primary: light-dark(#fffdf6, #10231b);
+    --color-secondary: light-dark(#44568f, #bfc9ff);
+    --color-accent: light-dark(#8b5c0b, #f2cf86);
+    --color-seal: light-dark(#a43a32, #ff9b8f);
 
-    --color-grade-0: light-dark(#4e5052, #f9fafb);
-    --color-grade-1: light-dark(#4aa8da, #afe3ff);
-    --color-grade-2: light-dark(#b03fe4, #e09eff);
-    --color-grade-3: light-dark(#ffaf2d, #ffe48d);
+    --color-player-0: light-dark(#4661b5, #a9b8ff);
+    --color-player-1: light-dark(#8a3aa8, #e09eff);
+    --color-player-2: light-dark(#9b5b09, #ffd078);
+    --color-player-3: light-dark(#237363, #73dfc7);
+    --color-player-4: light-dark(#b64056, #ff9fb1);
 
-    --color-success: light-dark(#61b700, #b9ff69);
-    --color-info: light-dark(#454ad3, #b5b7ff);
-    --color-error: light-dark(#e42b2b, #ff6969);
-    --color-primary: var(--color-success);
-    --color-secondary: var(--color-info);
+    --color-grade-0: light-dark(#555b55, #f4f0e4);
+    --color-grade-1: light-dark(#1f6f90, #afe3ff);
+    --color-grade-2: light-dark(#8036b0, #e09eff);
+    --color-grade-3: light-dark(#8b5c0b, #ffe48d);
+
+    --color-success: light-dark(#3f7d20, #b9ff69);
+    --color-info: light-dark(#44568f, #b5b7ff);
+    --color-error: light-dark(#b92f2f, #ff6969);
 }
 
 .grade-0 { --grade-color: var(--color-grade-0); }

@@ -12,20 +12,32 @@ import './Alloc.css'
 
 interface AllocInputProps {
     point: number
+    name: string
     onChange: (point: number) => void
 }
 
 function AllocInput(props: AllocInputProps) {
     return (
         <div className="allocation-input">
-            <button onClick={() => props.onChange(props.point - 1)}>−</button>
+            <button
+                aria-label={`${props.name}减少一点`}
+                onClick={() => props.onChange(props.point - 1)}
+            >
+                −
+            </button>
             <input
                 className="font-mono"
                 type="number"
+                aria-label={`${props.name}分配点数`}
                 value={props.point}
                 onChange={e => props.onChange(Number(e.target.value))}
             />
-            <button onClick={() => props.onChange(props.point + 1)}>+</button>
+            <button
+                aria-label={`${props.name}增加一点`}
+                onClick={() => props.onChange(props.point + 1)}
+            >
+                +
+            </button>
         </div>
     )
 }
@@ -72,6 +84,11 @@ export function Alloc() {
     }
     return (
         <div className="screen point-allocation">
+            <header className="alloc-head">
+                <span className="alloc-kicker font-mono">命格已定 · 落笔成章</span>
+                <h1 className="font-display">分配此生资质</h1>
+                <p>起点只是墨迹，往后的人生仍由天意与你共同写成。</p>
+            </header>
             <ul className="talent-list">
                 {Array.from(picked, id => (
                     <li key={id}>
@@ -112,6 +129,7 @@ export function Alloc() {
                         )}
                         <AllocInput
                             point={alloc[key]}
+                            name={properties[key]}
                             onChange={value => allocator(key, value)}
                         />
                     </li>
@@ -122,7 +140,7 @@ export function Alloc() {
                     随机分配
                 </button>
                 <button
-                    className={left ? 'error' : 'primary'}
+                    className={left ? 'pending' : 'primary'}
                     onClick={handleNext}
                 >
                     开始新人生

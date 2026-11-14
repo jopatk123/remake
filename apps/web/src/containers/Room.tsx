@@ -19,7 +19,27 @@ function randomCode() {
     return code
 }
 
-/** 多人对战要把每个人画成一列，触屏和窄屏排不下，直接不让进 */
+function RoomHeading({ code }: { code: string }) {
+    return (
+        <header className="room-head">
+            <span className="room-kicker font-mono">
+                TOGETHER IN ONE LIFE · 同场轮回
+            </span>
+            <div className="room-title-row">
+                <h2 className="room-title font-display">多人游戏</h2>
+                <span className="room-code font-mono">
+                    <small>房号</small>
+                    {code}
+                </span>
+            </div>
+            <p className="room-sub">
+                同一间命室，各自落笔。谁走得更远，一屏见分晓。
+            </p>
+        </header>
+    )
+}
+
+/** 多人游戏要把每个人画成一列，触屏和窄屏排不下，直接不让进 */
 function useDesktop() {
     const [desktop, setDesktop] = useState(true)
     useEffect(() => {
@@ -114,12 +134,14 @@ export function Room() {
     if (!desktop && !joined) {
         return (
             <div className="screen room">
-                <h2 className="room-title">多人对战</h2>
-                <p className="room-block">
-                    多人对战会把每个人的人生并排画在一屏上，
-                    手机和平板排不下，请用电脑打开。
-                </p>
-                <div className="room-actions">
+                <RoomHeading code={shownCode} />
+                <div className="room-block">
+                    <span className="room-block-mark font-display" aria-hidden="true">席</span>
+                    <h3>这一席需要更大的桌面</h3>
+                    <p>
+                        多人游戏会把每个人的人生并排画在一屏上，
+                        手机和平板排不下，请用电脑打开。
+                    </p>
                     <button className="primary" onClick={handleLeave}>
                         返回首页
                     </button>
@@ -130,38 +152,41 @@ export function Room() {
 
     return (
         <div className="screen room">
-            <h2 className="room-title">
-                多人对战
-                <span className="room-code font-mono">{shownCode}</span>
-            </h2>
+            <RoomHeading code={shownCode} />
 
             {!joined && (
                 <div className="room-form">
-                    <p className="room-hint">
-                        {urlRoom
-                            ? '你正在加入这个房间，起个昵称就能进'
-                            : '每人一台电脑加入同一个房间，开局后所有人的一生并排显示'}
-                    </p>
-                    <label>
-                        昵称
-                        <input
-                            value={name}
-                            maxLength={12}
-                            placeholder="随便起一个"
-                            onChange={e => setName(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                        />
-                    </label>
-                    <label>
-                        房间号
-                        <input
-                            value={code}
-                            maxLength={12}
-                            className="font-mono"
-                            onChange={e => setCode(e.target.value.toUpperCase())}
-                            onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                        />
-                    </label>
+                    <div className="room-form-head">
+                        <span className="room-form-kicker font-mono">入席</span>
+                        <strong className="font-display">写下名字，等命书翻开</strong>
+                        <p>
+                            {urlRoom
+                                ? '你正在加入这个房间，起个昵称就能进。'
+                                : '每人一台电脑加入同一个房间，开局后所有人的一生并排显示。'}
+                        </p>
+                    </div>
+                    <div className="room-fields">
+                        <label>
+                            昵称
+                            <input
+                                value={name}
+                                maxLength={12}
+                                placeholder="随便起一个"
+                                onChange={e => setName(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                            />
+                        </label>
+                        <label>
+                            房间号
+                            <input
+                                value={code}
+                                maxLength={12}
+                                className="font-mono"
+                                onChange={e => setCode(e.target.value.toUpperCase())}
+                                onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                            />
+                        </label>
+                    </div>
                     <div className="room-actions">
                         <button className="primary" onClick={handleJoin}>
                             加入房间
@@ -170,7 +195,9 @@ export function Room() {
                             返回
                         </button>
                     </div>
-                    {mp.status === 'connecting' && <p>连接中…</p>}
+                    {mp.status === 'connecting' && (
+                        <p className="room-status">正在扣门…</p>
+                    )}
                     {mp.status === 'closed' && (
                         <p className="room-error">连接已断开，请重新加入</p>
                     )}
@@ -181,67 +208,109 @@ export function Room() {
             {joined && (
                 <>
                     {result && (
-                        <Ranking
-                            items={result}
-                            me={mp.id}
-                            title="上一局排名"
-                            note="比的是谁走得远，年龄相同时看总评"
-                        />
+                        <div className="room-result">
+                            <Ranking
+                                items={result}
+                                me={mp.id}
+                                title="上一局排名"
+                                note="比的是谁走得远，年龄相同时看总评"
+                            />
+                        </div>
                     )}
-                    <ul className="room-players">
-                        {players.map((player, index) => (
-                            <li
-                                key={player.id}
-                                className={`player-tone-${index % 5} ${player.id === mp.id ? 'me' : ''}`}
-                                style={{ ['--player-order' as string]: index }}
-                            >
-                                <span className="name">
-                                    {player.name}
-                                    {player.host && (
-                                        <span className="tag font-mono">
-                                            房主
-                                        </span>
-                                    )}
-                                    {player.id === mp.id && (
-                                        <span className="tag font-mono">
-                                            我
-                                        </span>
-                                    )}
-                                </span>
-                                <span className="state">
-                                    {player.host ? '可以开始' : '已加入'}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                    <div className="room-actions">
-                        {host && (
-                            <button className="primary" onClick={start}>
-                                开始对局
+                    <section className="room-lobby">
+                        <div className="room-lobby-head">
+                            <div>
+                                <span className="room-lobby-kicker font-mono">候场名录</span>
+                                <strong>
+                                    {players.length} 人在席
+                                </strong>
+                            </div>
+                            <span className={`room-lobby-state ${players.length > 1 ? 'ready' : ''}`}>
+                                {players.length > 1 ? '可以开局' : '等第二位入席'}
+                            </span>
+                        </div>
+                        <ul className="room-players">
+                            {players.map((player, index) => (
+                                <li
+                                    key={player.id}
+                                    className={`player-tone-${index % 5} ${player.id === mp.id ? 'me' : ''}`}
+                                    style={{ ['--player-order' as string]: index }}
+                                >
+                                    <span className="seat-index font-mono">
+                                        {String(index + 1).padStart(2, '0')}
+                                    </span>
+                                    <span className="player-avatar font-display" aria-hidden="true">
+                                        {player.name.trim().slice(0, 1) || '命'}
+                                    </span>
+                                    <span className="name">
+                                        {player.name}
+                                        {player.host && (
+                                            <span className="tag font-mono">
+                                                房主
+                                            </span>
+                                        )}
+                                        {player.id === mp.id && (
+                                            <span className="tag font-mono">
+                                                我
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span className="state">
+                                        {player.host ? '执笔候场' : '已入席'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="room-actions">
+                            {host && (
+                                <button className="primary" onClick={start}>
+                                    开始对局
+                                </button>
+                            )}
+                            <button className="secondary" onClick={copyLink}>
+                                复制邀请链接
                             </button>
-                        )}
-                        <button className="secondary" onClick={copyLink}>
-                            复制邀请链接
-                        </button>
-                        <button className="secondary" onClick={handleLeave}>
-                            离开
-                        </button>
+                            <button className="secondary" onClick={handleLeave}>
+                                离开
+                            </button>
+                        </div>
+                        <p className="room-status">
+                            {host
+                                ? players.length > 1
+                                    ? '人已到齐，随时可以开局。'
+                                    : '先把邀请链接发给朋友，等第二位入席。'
+                                : '等房主落笔开局，先把链接发给朋友也行。'}
+                        </p>
+                        {mp.message && <p className="room-error">{mp.message}</p>}
+                    </section>
+
+                    <div className="room-bottom">
+                        <details className="room-rules">
+                            <summary>
+                                <span>对局规则</span>
+                                <small>自动推进 · 随时暂停 · 可调速度</small>
+                            </summary>
+                            <div className="room-rules-body">
+                                <p>
+                                    开局后自动往前走，谁都可以暂停、谁都可以调速度；
+                                    一结束先倒数 {RESULT_MS / 1000} 秒看排名和死因，
+                                    再回到这里接着开下一局。
+                                </p>
+                                <p>
+                                    房主要是掉线或者离开，房主会随机换给还在的人。
+                                </p>
+                            </div>
+                        </details>
+                        {/* 等开局的时候也能聊天，弹幕和对战页共用一个组件 */}
+                        <div className="room-chat">
+                            <div className="room-chat-head">
+                                <span className="font-display">候场闲谈</span>
+                                <small>发条弹幕，房里的人都看得见</small>
+                            </div>
+                            <DanmakuTrack />
+                            <DanmakuInput />
+                        </div>
                     </div>
-                    <p className="room-hint">
-                        {host
-                            ? `房主随时可以开始，现在房间里 ${players.length} 人`
-                            : '等房主开始…先把链接发给朋友也行'}
-                    </p>
-                    <p className="room-hint">
-                        开局后自动往前走，谁都可以暂停、谁都可以调速度；一结束先倒数 {RESULT_MS / 1000} 秒看排名和死因，再回到这里接着开下一局
-                    </p>
-                    <p className="room-hint">
-                        房主要是掉线或者离开，房主会随机换给还在的人
-                    </p>
-                    {mp.message && <p className="room-error">{mp.message}</p>}
-                    {/* 等开局的时候也能聊天，弹幕和对战页共用一个组件 */}
-                    <DanmakuTrack />
-                    <DanmakuInput />
                 </>
             )}
         </div>

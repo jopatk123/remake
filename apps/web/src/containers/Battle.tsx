@@ -1,5 +1,5 @@
 /**
- * 多人对战：整屏并排显示每个人的人生。
+ * 多人游戏：整屏并排显示每个人的人生。
  *
  * 自己那一列是完整的本地游戏，别人的列是服务端广播过来的镜像 ——
  * 只有属性和最近若干年的日志。两边用的是同一套日志组件，所以
@@ -181,6 +181,7 @@ function MyColumn({
     logs,
     interval,
 }: MyColumnProps) {
+    const ending = useGameState()?.ending ?? null
     const ref = useRef<HTMLUListElement>(null)
     useLayoutEffect(() => {
         requestAnimationFrame(() => {
@@ -192,7 +193,7 @@ function MyColumn({
     const note = over
         ? '本局结束，正在结算…'
         : ended
-          ? '你的人生结束了，等其他人跑完…'
+          ? `${ending ? ENDING_NOTICE[ending] : '此生已尽'} · 等其他人跑完…`
           : paused
             ? '已暂停'
             : '自动推进中…'
@@ -200,7 +201,7 @@ function MyColumn({
         'battle-col me',
         `player-tone-${tone}`,
         leading ? 'leading' : '',
-        ended ? 'dead' : '',
+        ended ? `ended outcome-${ending ?? 'death'}` : '',
     ].filter(Boolean).join(' ')
     return (
         <section className={classes}>
@@ -252,9 +253,10 @@ function PeerColumn({
             el.scrollTop = el.scrollHeight
         })
     }, [player.logs])
+    const ending = player.ending ?? 'death'
     const state = !player.alive
         ? player.connected
-            ? '已结束'
+            ? ENDING_NOTICE[ending] ?? '已结束'
             : '已离线'
         : paused
           ? '已暂停'
@@ -262,7 +264,7 @@ function PeerColumn({
     const classes = [
         'battle-col peer',
         `player-tone-${tone}`,
-        player.alive ? '' : 'dead',
+        player.alive ? '' : `ended outcome-${ending}`,
         player.connected ? '' : 'offline',
         leading ? 'leading' : '',
     ].filter(Boolean).join(' ')
@@ -387,7 +389,7 @@ export function Battle() {
         <div className={`battle ${room.paused ? 'is-paused' : ''}`}>
             <div className="battle-bar">
                 <span className="battle-code font-mono">{room.id}</span>
-                <span className="battle-round font-mono">已过 {room.round} 年</span>
+                <span className="battle-round font-mono">第 {room.round} 年</span>
                 <span className="battle-meta">
                     {over ? '本局已结束' : `${alive} / ${players.length} 人还在跑`}
                 </span>
@@ -400,6 +402,7 @@ export function Battle() {
                             className={room.interval === ms ? 'primary' : ''}
                             onClick={() => sendSpeed(ms)}
                             title={`每年 ${(ms / 1000).toFixed(1)} 秒`}
+                            aria-pressed={room.interval === ms}
                         >
                             {SPEED_LABELS[ms]}
                         </button>
@@ -407,7 +410,11 @@ export function Battle() {
                 </span>
                 <span className="battle-spacer" />
                 {canToggle && (
-                    <button className="primary" onClick={handlePause}>
+                    <button
+                        className="primary"
+                        onClick={handlePause}
+                        aria-pressed={room.paused}
+                    >
                         {room.paused ? '继续' : '暂停'}
                     </button>
                 )}
@@ -477,7 +484,12 @@ export function Battle() {
 
             {/* 结算浮层：先停在对战页倒数几秒，到点才由服务端收回房间页 */}
             {over && (
-                <div className="battle-result">
+                <div
+                    className="battle-result"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="本局排名"
+                >
                     <div className="battle-result-card">
                         <Ranking
                             items={room.result ?? []}

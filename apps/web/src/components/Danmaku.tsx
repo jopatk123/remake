@@ -26,6 +26,9 @@ export function DanmakuTrack() {
         <div
             className="danmaku"
             style={{ '--rows': visible.length } as CSSProperties}
+            role="log"
+            aria-live="polite"
+            aria-label="候场消息"
         >
             {visible.map(item => {
                 const playerIndex = room?.players.findIndex(
@@ -67,6 +70,7 @@ export function DanmakuInput() {
             <input
                 value={text}
                 maxLength={DANMAKU_LIMIT}
+                aria-label="候场弹幕"
                 placeholder={cooling ? '刚发过，缓一下…' : '说点什么，回车发送'}
                 disabled={!ready}
                 onChange={e => setText(e.target.value)}

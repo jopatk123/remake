@@ -19,6 +19,26 @@ export interface LogLike {
 
 const year = new Date().getFullYear()
 
+/** 单人人生页的年龄章节：只在整十岁给一个轻分隔，不打断每条日志 */
+const CHAPTER_LABELS: Record<number, string> = {
+    10: '十岁 · 启蒙',
+    20: '二十岁 · 及冠',
+    30: '三十岁 · 而立',
+    40: '四十岁 · 不惑',
+    50: '五十岁 · 知天命',
+    60: '六十岁 · 花甲',
+    70: '七十岁 · 古稀',
+    80: '八十岁 · 耄耋',
+    90: '九十岁 · 鲐背',
+    100: '百岁 · 期颐',
+}
+
+export function logChapter(age: number) {
+    if (CHAPTER_LABELS[age]) return CHAPTER_LABELS[age]
+    if (age > 100 && age % 20 === 0) return `${age} 岁 · 又一程`
+    return null
+}
+
 function LogTalent({ id }: { id: number }) {
     const talent = talents.get(id)
     if (!talent) return null

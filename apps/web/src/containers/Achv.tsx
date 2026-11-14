@@ -13,6 +13,9 @@ export function AchievementItem({ id, colled }: AchievementProps) {
     const { name, grade, description, hide } = achievements.get(id)!
     return (
         <li className={`achievement grade-${grade} ${colled ? 'colled' : ''}`}>
+            <span className="achievement-state">
+                {colled ? '已收集' : '未解锁'}
+            </span>
             <span className="name">{hide && !colled ? '???' : name}</span>
             <span className="description">
                 {hide && !colled ? '???' : description}

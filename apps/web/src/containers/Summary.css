@@ -1,6 +1,134 @@
 .screen.summary {
     gap: 1rem;
 
+    .life-ending {
+        --ending-color: var(--color-seal);
+        position: relative;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 1rem 1.25rem;
+        width: 100%;
+        padding: 1.25rem 1.35rem 1rem;
+        box-sizing: border-box;
+        overflow: hidden;
+        border: 0.0625rem solid color-mix(in srgb, var(--ending-color) 44%, var(--border-subtle));
+        border-radius: var(--radius-card);
+        background:
+            radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ending-color) 12%, transparent), transparent 40%),
+            radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 38%),
+            color-mix(in srgb, var(--surface-background) 92%, transparent);
+        box-shadow: var(--shadow-card);
+        animation: ending-hero-in 0.62s var(--ease-out) both;
+
+        &::after {
+            content: '';
+            position: absolute;
+            right: -4rem;
+            bottom: -5rem;
+            width: 14rem;
+            aspect-ratio: 1;
+            border: 0.0625rem solid color-mix(in srgb, var(--ending-color) 14%, transparent);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        &.ending-ascend,
+        &.ending-transcend {
+            --ending-color: var(--color-grade-3);
+        }
+        &.ending-leave-world { --ending-color: var(--color-info); }
+        &.ending-reincarnation { --ending-color: var(--color-grade-2); }
+        &.ending-death { --ending-color: var(--color-seal); }
+    }
+
+    .life-ending-seal {
+        display: grid;
+        place-items: center;
+        width: 4.6rem;
+        aspect-ratio: 1;
+        color: var(--ending-color);
+        border: 0.1875rem double currentColor;
+        border-radius: 0.4rem;
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        box-shadow: inset 0 0 0 0.25rem color-mix(in srgb, var(--ending-color) 8%, transparent);
+        transform: rotate(-5deg);
+        user-select: none;
+    }
+
+    .life-ending-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+
+        .life-ending-kicker {
+            color: var(--ending-color);
+            font-size: 0.7rem;
+            letter-spacing: 0.24em;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--base-text-color);
+            font-size: clamp(1.9rem, 4vw, 2.7rem);
+            line-height: 1.25;
+            letter-spacing: 0.1em;
+        }
+
+        p {
+            margin: 0.15rem 0 0;
+            color: var(--text-muted);
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+        }
+    }
+
+    .life-ending-stats {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0;
+        margin: 0;
+        padding-top: 0.85rem;
+        border-top: 0.0625rem solid color-mix(in srgb, var(--ending-color) 22%, var(--border-subtle));
+
+        > div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.12rem;
+            min-width: 0;
+            border-right: 0.0625rem solid var(--border-subtle);
+            &:last-child { border-right: none; }
+        }
+
+        dt {
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+        }
+
+        dd {
+            margin: 0;
+            color: var(--ending-color);
+            font-size: 1.28rem;
+            font-weight: 800;
+            line-height: 1.2;
+
+            small {
+                margin-left: 0.1rem;
+                font-family: var(--font-sans);
+                font-size: 0.65rem;
+                font-weight: normal;
+                opacity: 0.72;
+            }
+        }
+    }
+
     .cultivation-summary {
         display: flex;
         flex-direction: row;
@@ -96,4 +224,40 @@
 @keyframes talent-summary-in {
     from { opacity: 0; transform: translateX(-0.5rem); }
     to { opacity: 1; transform: none; }
+}
+
+@keyframes ending-hero-in {
+    from { opacity: 0; transform: translateY(0.7rem) scale(0.985); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 32rem) {
+    .screen.summary {
+        .life-ending {
+            gap: 0.75rem;
+            padding: 1rem;
+        }
+        .life-ending-seal {
+            width: 3.5rem;
+            font-size: 1.5rem;
+        }
+        .life-ending-copy h1 { font-size: 1.75rem; }
+        .life-ending-copy p { font-size: 0.78rem; }
+        .life-ending-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            row-gap: 0.6rem;
+            > div:nth-child(2) { border-right: none; }
+        }
+        ul.judge-list {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.25rem;
+
+            > li { min-width: 0; }
+            > li span {
+                padding: 0 0.15rem;
+                font-size: 0.72rem;
+            }
+        }
+    }
 }

@@ -9,23 +9,38 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            border: 0.0625rem solid var(--base-text-color);
+            border: 0.0625rem solid var(--border-subtle);
+            border-radius: var(--radius-card);
+            background: var(--surface-background);
+            box-shadow: var(--shadow-card);
             box-sizing: border-box;
             cursor: pointer;
+            overflow: hidden;
+            transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) var(--ease-out);
             > .generator > ul > li { text-align: center; }
             > .name {
                 width: 100%;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                font-size: calc(1rem * var(--ratio-font));
-                height: calc(2rem * var(--ratio));
+                font-family: var(--font-display);
+                font-size: calc(1.05rem * var(--ratio-font));
+                letter-spacing: 0.06em;
+                min-height: calc(2rem * var(--ratio));
+            }
+            @media (hover: hover) {
+                &:hover {
+                    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-subtle));
+                    box-shadow: var(--shadow-hover);
+                    transform: translateY(-0.08rem);
+                }
             }
             &.selected {
-                border: 0.0625rem solid var(--color-primary);
+                border: 0.0625rem solid color-mix(in srgb, var(--color-primary) 72%, var(--border-subtle));
+                box-shadow: 0 0.35rem 1.25rem color-mix(in srgb, var(--color-primary) 14%, transparent);
                 > .name {
-                    background-color: var(--color-primary);
-                    color: var(--base-background-color);
+                    background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 90%, #000000), var(--color-primary));
+                    color: var(--on-primary);
                 }
                 > .chara-details {
                     height: auto;
@@ -39,12 +54,12 @@
         flex-direction: column;
         gap: 0.5rem;
         width: 100%;
-        border-top: 0.0625rem solid var(--base-text-color);
+        border-top: 0.0625rem solid var(--border-subtle);
         box-sizing: border-box;
         height: 0;
         padding: 0 0.5rem;
         overflow-y: hidden;
-        transition: all 0.3s ease-in-out;
+        transition: height 0.3s ease-in-out, padding 0.3s ease-in-out;
         interpolate-size: allow-keywords;
         > ul.talent-list {
             display: flex;
@@ -85,6 +100,24 @@
                 &.intelligence { order: 2 }
                 &.strength { order: 3 }
                 &.money { order: 4 }
+            }
+        }
+    }
+
+    @media (max-width: 40rem) {
+        > .chara-list > .character > .name {
+            font-size: 1rem;
+            padding: 0.35rem 0.5rem;
+        }
+        .chara-details {
+            padding: 0 0.35rem;
+            > ul.properties {
+                gap: 0.25rem;
+                > li {
+                    min-width: 0;
+                    font-size: 0.78rem;
+                    span { padding: 0 0.1rem; }
+                }
             }
         }
     }

@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from 'react'
+import { Fragment, useState, useRef, useCallback } from 'react'
+import type { UIEvent } from 'react'
 import { useLayoutEffect, useEffect } from 'react'
 import AnimatedProp from '@/components/AnimatedProp'
 import CultivationBar from '@/components/CultivationBar'
@@ -8,7 +9,7 @@ import { useJudge } from '@/hooks/judge'
 import { AutoInterval } from '@/config'
 import { toastAchvs } from '@/toast/Achv'
 import { emitRareFxFromNext } from '@/fx/rare'
-import { Log } from '@/components/LogList'
+import { Log, logChapter } from '@/components/LogList'
 import { useInMatch, useMulti } from '@/multi/useMulti'
 import { Battle } from './Battle'
 import './Play.css'
@@ -33,6 +34,7 @@ function Solo() {
     const logRef = useRef<HTMLUListElement>(null)
     const autoRef = useRef(0)
     const processRef = useRef(false)
+    const followLatest = useRef(true)
     const gotoSummary = useGotoSummary()
     const handleNext = useCallback(() => {
         if (ended) return
@@ -48,9 +50,15 @@ function Solo() {
         const achievements = gotoSummary()
         toastAchvs(achievements)
     }, [ended, gotoSummary])
+    const handleLogScroll = useCallback((event: UIEvent<HTMLUListElement>) => {
+        const element = event.currentTarget
+        const distanceToBottom =
+            element.scrollHeight - element.scrollTop - element.clientHeight
+        followLatest.current = distanceToBottom < 56
+    }, [])
     useLayoutEffect(() => {
         requestAnimationFrame(() => {
-            if (!logRef.current) return
+            if (!logRef.current || !followLatest.current) return
             logRef.current.scrollTop = logRef.current.scrollHeight
         })
     }, [logs])
@@ -60,33 +68,80 @@ function Solo() {
         return () => window.clearInterval(autoRef.current)
     }, [auto, handleNext])
     const ending = state?.ending ? EndingName[state.ending] : null
+    const displayAge = Math.max(0, state?.props.current.age ?? 0)
     return (
         <div
             className={`screen play ${state?.ending ? `ending-${state.ending}` : ''}`}
         >
             <Properties />
             <CultivationBar />
-            <ul
-                className="logs hide-scrollbar"
-                onClick={handleNext}
-                ref={logRef}
-            >
-                {logs.map((log, index) => (
-                    <Log
-                        key={log.age}
-                        log={log}
-                        latest={index === logs.length - 1}
-                    />
-                ))}
-            </ul>
+            <div className="life-log-wrap">
+                <div className="life-log-head">
+                    <span className="font-display">此生纪事</span>
+                    <span className="life-age font-mono">
+                        {displayAge} 岁
+                    </span>
+                </div>
+                {logs.length === 0 ? (
+                    <div
+                        className="life-empty"
+                        role="button"
+                        tabIndex={0}
+                        onClick={handleNext}
+                        onKeyDown={event => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return
+                            event.preventDefault()
+                            handleNext()
+                        }}
+                    >
+                        <span className="life-empty-age font-display" aria-hidden="true">0</span>
+                        <span className="life-empty-kicker font-mono">命书尚未落笔</span>
+                        <strong className="font-display">写下第一年</strong>
+                        <span>点一下，看看这一生会怎样开始</span>
+                    </div>
+                ) : (
+                    <ul
+                        className="logs hide-scrollbar"
+                        onClick={handleNext}
+                        onScroll={handleLogScroll}
+                        ref={logRef}
+                        role="log"
+                        aria-live="polite"
+                        aria-label="人生记事"
+                    >
+                        {logs.map((log, index) => {
+                            const chapter = logChapter(log.age)
+                            return (
+                                <Fragment key={log.age}>
+                                    {chapter && (
+                                        <li className="log-chapter" aria-hidden="true">
+                                            <span>{chapter}</span>
+                                        </li>
+                                    )}
+                                    <Log
+                                        log={log}
+                                        latest={index === logs.length - 1}
+                                    />
+                                </Fragment>
+                            )
+                        })}
+                    </ul>
+                )}
+            </div>
             <div className="controls">
                 {!ended && (
-                    <button
-                        className="primary"
-                        onClick={() => setAuto(!auto)}
-                    >
-                        {auto ? '关闭自动' : '开启自动'}
-                    </button>
+                    <>
+                        <button className="primary" onClick={handleNext}>
+                            下一年
+                        </button>
+                        <button
+                            className="secondary"
+                            onClick={() => setAuto(!auto)}
+                            aria-pressed={auto}
+                        >
+                            {auto ? '停笔' : '自动演绎'}
+                        </button>
+                    </>
                 )}
                 {ended && (
                     <button className="primary" onClick={handleGotoSummary}>

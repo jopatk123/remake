@@ -8,6 +8,8 @@ export function ToastMsgContainer() {
     return (
         <div
             className="msg-toast-container"
+            role="status"
+            aria-live="polite"
             onMouseEnter={startPause}
             onMouseLeave={endPause}
         >

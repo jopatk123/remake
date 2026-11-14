@@ -44,7 +44,7 @@ export function Game() {
     const saving = useWatcher()
     const setStep = useSetStep()
     const booted = useRef(false)
-    // 邀请链接（?room=XXXX）直接进房间，不用先点「多人对战」
+    // 邀请链接（?room=XXXX）直接进房间，不用先点「多人游戏」
     useLayoutEffect(() => {
         if (booted.current) return
         booted.current = true

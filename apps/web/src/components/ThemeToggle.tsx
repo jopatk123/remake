@@ -32,7 +32,8 @@ export function ThemeToggle() {
         <button
             className="theme-toggle-btn"
             onClick={() => setIsDark(!isDark)}
-            aria-label="Toggle theme"
+            aria-label={isDark ? '切换到浅色主题' : '切换到深色主题'}
+            title={isDark ? '切换到浅色主题' : '切换到深色主题'}
         >
             <svg
                 className="theme-svg"

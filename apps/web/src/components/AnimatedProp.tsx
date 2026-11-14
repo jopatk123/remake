@@ -8,7 +8,7 @@ interface AnimatedPropProps {
     value: number
     grade: number
     /**
-     * 多人对战的节拍（每年毫秒数）。极速档下把数字滚动和飘字压短，
+     * 多人游戏的节拍（每年毫秒数）。极速档下把数字滚动和飘字压短，
      * 否则动画还没播完下一年就来了，属性栏会一直闪着中间值。
      */
     interval?: number
@@ -29,7 +29,7 @@ export function AnimatedProp({ prop, value, grade, interval }: AnimatedPropProps
 
     /**
      * 属性跨档才做庆祝反馈：每年 +1 的普通变化继续走飘字，
-     * 否则多人对战里每列每年都闪一次，日志就没法看了。
+     * 否则多人游戏里每列每年都闪一次，日志就没法看了。
      */
     useEffect(() => {
         const previous = previousGrade.current

@@ -8,6 +8,8 @@ export function ToastAchvContainer() {
     return (
         <div
             className="achv-toast-container"
+            role="status"
+            aria-live="polite"
             onMouseEnter={startPause}
             onMouseLeave={endPause}
         >

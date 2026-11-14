@@ -7,8 +7,14 @@ export function Github() {
         else window.open(repo)
     }
     return (
-        <button className="github-btn" onClick={handleClick}>
+        <button
+            className="github-btn"
+            onClick={handleClick}
+            aria-label="打开 GitHub 项目页"
+            title="打开 GitHub 项目页"
+        >
             <svg
+                aria-hidden="true"
                 fill="currentColor"
                 width="800px"
                 height="800px"

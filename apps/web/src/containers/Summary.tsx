@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { usePicked, useEnd, useProfile, useIsClassic, useGameState } from '@remake/hooks'
+import { usePicked, useEnd, useProfile, useIsClassic, useGameState, useSummary } from '@remake/hooks'
 import { realmConfig, realmFullName, EndingName } from '@remake/core'
 import { useEndJudge } from '@/hooks/judge'
 import { properties, judgeDisplay } from '@remake/data/etc/display'
@@ -7,6 +7,71 @@ import { toastAchvs, toastMsg } from '@/toast'
 import Talent from '@/components/Talent'
 import AnimatedNumber from '@/components/AnimatedNumber'
 import './Summary.css'
+
+const ENDING_KICKER: Record<string, string> = {
+    death: '此生落幕',
+    ascend: '羽化登仙',
+    transcend: '超脱轮回',
+    'leave-world': '踏碎虚空',
+    reincarnation: '再入轮回',
+}
+
+const ENDING_LINE: Record<string, string> = {
+    death: '一世浮沉，终有归处。',
+    ascend: '尘缘已尽，天光接引。',
+    transcend: '万法归一，此身自在。',
+    'leave-world': '山河仍在，故人已远。',
+    reincarnation: '旧梦已散，来生再见。',
+}
+
+const ENDING_SEAL: Record<string, string> = {
+    death: '终',
+    ascend: '仙',
+    transcend: '道',
+    'leave-world': '空',
+    reincarnation: '生',
+}
+
+function LifeEnding() {
+    const state = useGameState()
+    const summary = useSummary()
+    const ending = state?.ending ?? null
+    const age = state?.props.current.age ?? 0
+    return (
+        <header className={`life-ending ${ending ? `ending-${ending}` : ''}`}>
+            <span className="life-ending-seal font-display" aria-hidden="true">
+                {ending ? ENDING_SEAL[ending] : '终'}
+            </span>
+            <div className="life-ending-copy">
+                <span className="life-ending-kicker font-mono">
+                    {ending ? ENDING_KICKER[ending] : '此生已尽'}
+                </span>
+                <h1 className="font-display">
+                    {ending ? EndingName[ending] : '人生总结'}
+                </h1>
+                <p>{ending ? ENDING_LINE[ending] : '命数有尽，余韵未绝。'}</p>
+            </div>
+            <dl className="life-ending-stats">
+                <div>
+                    <dt>享年</dt>
+                    <dd className="font-mono">{age}<small>岁</small></dd>
+                </div>
+                <div>
+                    <dt>经历</dt>
+                    <dd className="font-mono">{state?.events.size ?? 0}<small>事</small></dd>
+                </div>
+                <div>
+                    <dt>成就</dt>
+                    <dd className="font-mono">{state?.achievements.size ?? 0}<small>项</small></dd>
+                </div>
+                <div>
+                    <dt>总评</dt>
+                    <dd className="font-mono">{summary}</dd>
+                </div>
+            </dl>
+        </header>
+    )
+}
 
 function Judges() {
     const judges = useEndJudge()
@@ -106,6 +171,7 @@ export default function Summary() {
     }
     return (
         <div className="screen summary">
+            <LifeEnding />
             <Judges />
             <CultivationSummary />
             <div className="section">
