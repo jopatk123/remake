@@ -4,6 +4,7 @@
  * 名次跟着房间下发，开局清空；死因只是其中一个事件 id，交给 Death 查表。
  */
 import type { RankingItem } from '@remake/multi'
+import { EndingName } from '@remake/core'
 import { Death } from './Death'
 import './Ranking.css'
 
@@ -26,6 +27,9 @@ export function Ranking({ items, me, title, note }: RankingProps) {
                     <strong>{champion.name}</strong>
                     <span className="champion-score font-mono">
                         {champion.age} 岁 · 总评 {champion.summary}
+                        {champion.ending
+                            ? ` · ${EndingName[champion.ending]}`
+                            : ''}
                     </span>
                 </div>
             )}
@@ -40,7 +44,29 @@ export function Ranking({ items, me, title, note }: RankingProps) {
                         <span className="name">{item.name}</span>
                         <span className="age font-mono">{item.age} 岁</span>
                         <span className="score font-mono">{item.summary}</span>
-                        <Death id={item.death} age={item.age} />
+                        {(item.realmTitle || item.ending) && (
+                            <span className="rank-cultivation">
+                                {item.realmTitle && (
+                                    <span className="rank-realm font-mono">
+                                        {item.realmTitle}
+                                    </span>
+                                )}
+                                {item.ending && (
+                                    <span
+                                        className={`rank-ending ending-${item.ending}`}
+                                    >
+                                        {EndingName[item.ending]}
+                                    </span>
+                                )}
+                            </span>
+                        )}
+                        <Death
+                            id={item.death}
+                            age={item.age}
+                            ending={item.ending}
+                            alive={item.alive}
+                            connected={item.connected}
+                        />
                     </li>
                 ))}
             </ol>

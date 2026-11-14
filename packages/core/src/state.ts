@@ -1,4 +1,9 @@
 import type { Achievement, Event, Talent } from '@remake/data'
+import {
+    CultivationPath,
+    type CultivationState,
+    type EndingType,
+} from '@remake/data'
 import { produce } from 'immer'
 import { sum, keys } from '@remake/vitex'
 
@@ -35,6 +40,34 @@ export interface GameState {
     events: Set<Event['id']> // 本局触发过的事件
     achievements: Set<Achievement['id']> // 本局达成的成就
     talentTriggers: Map<Talent['id'], number> // 本局天赋触发次数
+    /** 修仙进度：境界 / 修为 / 大道 / 天劫准备 */
+    cultivation: CultivationState
+    /** 事件触发历史：事件 id → 触发过的年龄列表，用于冷却与去重 */
+    eventHistory: Map<Event['id'], number[]>
+    /** 本局结局；null 表示尚未结束 */
+    ending: EndingType | null
+    /** 事件累积的突破成功率加成 */
+    rateBonus: number
+}
+
+export function createCultivation(): CultivationState {
+    return {
+        started: false,
+        startAge: 0,
+        path: CultivationPath.Standard,
+        realm: 0,
+        minor: 0,
+        progress: 0,
+        bottleneck: false,
+        daos: [],
+        flags: [],
+        tribulation: 0,
+        tribulationStage: 0,
+        tribulationBaseline: 0,
+        breakthroughs: 0,
+        failures: 0,
+        decay: 0,
+    }
 }
 
 /** 持久化存储的数据 */
@@ -59,13 +92,39 @@ export function createState(
         events: new Set(),
         achievements: new Set(),
         talentTriggers: new Map(),
+        cultivation: createCultivation(),
+        eventHistory: new Map(),
+        ending: null,
+        rateBonus: 0,
     }
 }
 
-export function summary({ props }: GameState) {
-    const { age, ...others } = props.highest
+/**
+ * 总评：年龄贡献封顶 500，超出的部分改由境界 / 大道 / 结局提供。
+ * 否则删掉 500 岁上限之后，只要一直活着分数就会无限膨胀，
+ * 多人排名也会退化成「谁挂机久谁赢」。
+ */
+export function summary(state: GameState) {
+    const { age, ...others } = state.props.highest
     const s = sum(Object.values(others))
-    return Math.floor(s * 2 + age / 2)
+    const ageScore = Math.min(Math.max(0, age), 500) / 2
+    // 兼容旧存档 / 手工构造的状态：cultivation 可能不存在
+    const c = state.cultivation
+    const realmScore =
+        c?.started
+            ? (c.realm + 1) ** 2 * 12 + (c.breakthroughs ?? 0) * 8
+            : 0
+    const daoScore = (c?.daos?.length ?? 0) * 20
+    const ending = state.ending
+    const endingScore =
+        ending === 'ascend'
+            ? 600
+            : ending === 'transcend'
+              ? 800
+              : ending === 'leave-world'
+                ? 400
+                : 0
+    return Math.floor(s * 2 + ageScore + realmScore + daoScore + endingScore)
 }
 
 export interface FlatState {
@@ -90,6 +149,25 @@ export interface FlatState {
     LIF: GameState['life']
     TLT: GameState['talents']
     EVT: GameState['events']
+
+    /** 修仙条件键：扩展事件与天赋可以直接写 REALM>=3 / DAO>=5 之类 */
+    STRT: number
+    REALM: number
+    MINOR: number
+    CULT: number
+    PATH: number
+    DAO: number
+    TRIB: number
+    BRK: number
+    FAIL: number
+    DECAY: number
+    BTL: number
+    /** 是否飞升 / 超脱 */
+    ASC: number
+    /** 结局编码：0 未结束，1 死亡，2 飞升，3 超脱，4 离世，5 转世 */
+    END: number
+    FLAG: Set<string>
+    DAOS: Set<string>
 
     TMS: ProfileState['times']
     AEVT: ProfileState['events']
@@ -132,6 +210,39 @@ const FlatMappers: { [Key in FlatStateKey]: FlatMapper<Key> } = {
     LIF: state => state.game.life,
     TLT: state => state.game.talents,
     EVT: state => state.game.events,
+    STRT: state => (state.game.cultivation.started ? 1 : 0),
+    REALM: state => state.game.cultivation.realm,
+    MINOR: state => state.game.cultivation.minor,
+    CULT: state => state.game.cultivation.progress,
+    PATH: state => state.game.cultivation.path,
+    DAO: state => state.game.cultivation.daos.length,
+    TRIB: state => state.game.cultivation.tribulation,
+    BRK: state => state.game.cultivation.breakthroughs,
+    FAIL: state => state.game.cultivation.failures,
+    DECAY: state => state.game.cultivation.decay,
+    BTL: state => (state.game.cultivation.bottleneck ? 1 : 0),
+    ASC: state =>
+        state.game.ending === 'ascend' || state.game.ending === 'transcend'
+            ? 1
+            : 0,
+    END: state => {
+        switch (state.game.ending) {
+            case 'death':
+                return 1
+            case 'ascend':
+                return 2
+            case 'transcend':
+                return 3
+            case 'leave-world':
+                return 4
+            case 'reincarnation':
+                return 5
+            default:
+                return 0
+        }
+    },
+    FLAG: state => new Set(state.game.cultivation.flags),
+    DAOS: state => new Set(state.game.cultivation.daos),
     TMS: state => state.profile.times,
     AEVT: state => state.profile.events,
     ATLT: state => state.profile.talents,

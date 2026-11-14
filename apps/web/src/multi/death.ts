@@ -5,11 +5,20 @@
  * 这里一半负责「从日志里挑出该报哪个 id」（上报时用），
  * 另一半负责「把 id 翻成能显示的一行字」（榜单渲染时用）。
  */
-import { events } from '@remake/data'
+import { events, LEGACY_ENDINGS, ASCEND_EVENT_ID } from '@remake/data'
 import { format } from '@remake/vitex'
 
 /** 通用的「你死了。」，写进榜单等于没说，真正的原因在它前面那条分支事件 */
 const GENERIC_DEATH = 10000
+/** 飞升 / 超脱事件：自带结局文本，榜单要优先显示它们而不是「你死了。」 */
+const ASCEND_IDS = new Set<number>([
+    ASCEND_EVENT_ID,
+    51302,
+    51303,
+    ...Object.entries(LEGACY_ENDINGS)
+        .filter(([, ending]) => ending === 'ascend' || ending === 'transcend')
+        .map(([id]) => Number(id)),
+])
 /** 事件表里有彩蛋级的超长文本（整首歌词），别把榜单撑爆 */
 const MAX_TEXT = 120
 const thisYear = new Date().getFullYear()
@@ -25,6 +34,10 @@ export function deathEventId(logs: { events: number[] }[]): number | null {
     const last = logs.at(-1)
     if (!last) return null
     const ids = last.events
+    // 飞升 / 超脱是圆满结局，优先用它的文本，别被同年的普通事件盖过去
+    for (let i = ids.length - 1; i >= 0; i--) {
+        if (ASCEND_IDS.has(ids[i]!)) return ids[i]!
+    }
     for (let i = ids.length - 1; i >= 0; i--) {
         const id = ids[i]
         if (id === undefined) continue
@@ -36,9 +49,11 @@ export function deathEventId(logs: { events: number[] }[]): number | null {
     return ids.at(-1) ?? null
 }
 
-/** 把死因事件 id 翻成榜单上的一行字；查不到就返回 null 交给界面显示「不明」 */
+/** 把死因事件 id 翻成榜单上的一行字；查不到返回 null，由 Death 组件决定兜底文案 */
 export function deathText(id: number | null, age = 0): string | null {
-    if (id == null) return null
+    // 通用死亡事件本身只有「你死了。」，写进榜单等于没说；
+    // 真正的原因应该由 deathEventId 取前一条分支事件。
+    if (id == null || id === GENERIC_DEATH) return null
     const item = events.get(id)
     if (!item) return null
     let text = item.event

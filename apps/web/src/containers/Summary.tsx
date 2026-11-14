@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { usePicked, useEnd, useProfile, useIsClassic } from '@remake/hooks'
+import { usePicked, useEnd, useProfile, useIsClassic, useGameState } from '@remake/hooks'
+import { realmConfig, realmFullName, EndingName } from '@remake/core'
 import { useEndJudge } from '@/hooks/judge'
 import { properties, judgeDisplay } from '@remake/data/etc/display'
 import { toastAchvs, toastMsg } from '@/toast'
@@ -23,6 +24,28 @@ function Judges() {
                 </li>
             ))}
         </ul>
+    )
+}
+
+/** 结算页上的修仙总结：最终境界 + 结局 + 修行统计 */
+function CultivationSummary() {
+    const state = useGameState()
+    if (!state?.cultivation.started) return null
+    const c = state.cultivation
+    const grade = realmConfig(c.realm).grade
+    return (
+        <div className={`cultivation-summary grade-${grade}`}>
+            <span className="cs-label">
+                {state.ending ? EndingName[state.ending] : '此生修行'}
+            </span>
+            <strong className="cs-title">
+                {realmFullName(c.realm, c.minor)}
+            </strong>
+            <span className="cs-meta font-mono">
+                {c.startAge} 岁入道 · 突破 {c.breakthroughs} 次 · 悟道{' '}
+                {c.daos.length} 条 · 天劫准备 {c.tribulation}
+            </span>
+        </div>
     )
 }
 
@@ -84,6 +107,7 @@ export default function Summary() {
     return (
         <div className="screen summary">
             <Judges />
+            <CultivationSummary />
             <div className="section">
                 <div className="title">
                     {isClassic

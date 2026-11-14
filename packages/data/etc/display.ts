@@ -12,13 +12,17 @@ const s = (str: string) => str.split('|')
 const p = (prefix: string, arr: string[]) => arr.map(v => prefix + v)
 const jbase = '地狱|折磨|不佳|普通|优秀|罕见|逆天|传说'
 export const judges = {
-    summary: s(jbase),
+    // 与 JudgeLineMap.summary 的 12 档一一对应
+    summary: s(jbase + '|筑基|金丹|元婴|飞升'),
     charm: s(jbase),
     money: s(jbase),
     spirit: s('地狱|折磨|不幸|普通|幸福|极乐|天命'),
     intelligence: s(jbase + '|识海|元神|仙魂'),
     strength: s(jbase + '|凝气|筑基|金丹|元婴|仙体'),
-    age: s('胎死腹中|早夭|少年|盛年|中年|花甲|古稀|杖朝|南山|不老|修仙|仙寿'),
+    // 与 JudgeLineMap.age 的 16 档一一对应：500 岁之后还有仙寿档
+    age: s(
+        '胎死腹中|早夭|少年|盛年|中年|花甲|古稀|杖朝|南山|不老|修仙|仙寿|地仙|天仙|金仙|与天同寿',
+    ),
 }
 
 export const rates = {

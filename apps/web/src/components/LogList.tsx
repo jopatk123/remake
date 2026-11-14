@@ -59,12 +59,13 @@ function LogEvent({ id, post, offset }: LogEventProps) {
         event = format(event, g)
         if (post && postEvent) postEvent = format(postEvent, g)
     }
+    // 突破 / 天劫 / 飞升事件用 kind 做轻量高亮，不改动原有的稀有度配色。
+    // log-text 用来保留事件文本里的换行：彩蛋歌词 / 长诗不挤成一整段。
+    const cls = `grade-${grade} log-text${item.kind ? ` log-${item.kind}` : ''}`
     return (
         <>
-            <li className={`grade-${grade}`}>{event}</li>
-            {post && postEvent && (
-                <li className={`grade-${grade}`}>{postEvent}</li>
-            )}
+            <li className={cls}>{event}</li>
+            {post && postEvent && <li className={cls}>{postEvent}</li>}
         </>
     )
 }

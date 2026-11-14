@@ -7,13 +7,24 @@
  * - 推进是全自动的：服务端按固定节拍发 tick，谁都不用点“继续”。
  *   想停下来看文字就发 pause，任何人再发一次就能继续；
  *   嫌太快 / 太慢就发 speed，同样不分是谁改的。
- * - 全员阵亡后先停在结算倒计时（RESULT_MS），到点才收回大厅。
+ * - 所有人结束后先停在结算倒计时（RESULT_MS），到点才收回大厅。
  * - 死因只上报事件 id，文本由各端查本地数据表，服务端仍然不懂内容。
  *   上报的是「真正导致这一结局的事件」：分支死法取「你死了。」前面那条，
  *   飞升 / 穿越这类自带结局文本的事件就取它自己。
  */
 
 export type Phase = 'lobby' | 'playing' | 'over'
+
+/** 结局类型，与 @remake/data 的同名类型保持一致（这里不依赖数据表） */
+export type EndingType =
+    | 'death'
+    | 'ascend'
+    | 'transcend'
+    | 'leave-world'
+    | 'reincarnation'
+
+/** 单人人生没有年龄上限了，房间层面仍需一个回合保护，避免一局永远不结束 */
+export const MAX_ROUNDS = 3000
 
 export interface Props {
     charm: number
@@ -58,7 +69,7 @@ export const MAX_SPEED = 5000
 /**
  * 结算后留在对战页的时间（毫秒）。
  *
- * 全员阵亡那一拍如果立刻把房间放回大厅，最后一年刚滚出来的日志和名次
+ * 所有人结束那一拍如果立刻把房间放回大厅，最后一年刚滚出来的日志和名次
  * 一闪就没了，太突然。改成先停在结算浮层上倒计时，到点再回房间页。
  * 服务端可用 RESULT_MS 环境变量覆盖（测试里通常调小）。
  */
@@ -113,6 +124,12 @@ export interface PlayerView {
      * 只传 id 不传文本：和日志一样由各端查本地数据表渲染。
      */
     death: number | null
+    /** 修仙境界序号，旧客户端不上报时缺省按 0 处理 */
+    realm?: number
+    /** 当前境界文案（可选，纯展示用） */
+    realmTitle?: string
+    /** 结局类型；飞升 / 超脱会优先排到榜首，但不会让别人提前结束 */
+    ending?: EndingType | null
 }
 
 export interface RoomView {
@@ -151,8 +168,17 @@ export interface RankingItem {
     age: number
     summary: number
     rank: number
-    /** 死因事件 id，和 PlayerView.death 同源 */
+    /** 死因事件 id，和 PlayerView.death 同源；非死亡结局时为 null */
     death: number | null
+    /** 结算时是否还活着：超时收摊时可能出现，用来区分「未阵亡」和「死因缺失」 */
+    alive?: boolean
+    /** 结算时连接是否还在：掉线的人没有死因，不能显示成「不明」 */
+    connected?: boolean
+    /** 最终境界，用于「飞升 > 境界 > 年龄」的排名展示 */
+    realm?: number
+    realmTitle?: string
+    /** 结局类型 */
+    ending?: EndingType | null
 }
 
 export type ClientMessage =
@@ -174,6 +200,10 @@ export type ClientMessage =
           logs: LogLine[]
           /** 阵亡那年死因事件的 id，活着时给 null；缺省按 null 处理 */
           death?: number | null
+          /** 修仙进度（可选字段，旧客户端不带也能正常跑） */
+          realm?: number
+          realmTitle?: string
+          ending?: EndingType | null
       }
 
 export type ServerMessage =

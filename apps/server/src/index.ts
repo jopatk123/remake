@@ -76,6 +76,9 @@ wss.on('connection', ws => {
                     props: msg.props,
                     logs: msg.logs,
                     death: msg.death,
+                    realm: msg.realm,
+                    realmTitle: msg.realmTitle,
+                    ending: msg.ending,
                 })
                 break
             default:

@@ -1,5 +1,11 @@
-import type { Achievement, Event, Talent } from '@remake/data'
-import { ages, talents, AchievementOpportunity as Ao } from '@remake/data'
+import type {
+    Achievement,
+    Event,
+    Talent,
+    CultivationSnapshot,
+    EndingType,
+} from '@remake/data'
+import { talents, AchievementOpportunity as Ao } from '@remake/data'
 import type { GameState, ProfileState } from './state'
 import { createState, nextProfile, propsEffect } from './state'
 import { summary as stateSummary } from './state'
@@ -8,6 +14,14 @@ import { pull, exclude, replacement, additionalPoints } from './talent'
 import { trigger as ttr } from './talent'
 import { trigger as atr } from './achievement'
 import { trigger as etr, check as ec } from './event'
+import {
+    shouldAutoStart,
+    pickEntryEvent,
+    advanceCultivation,
+    resolveEventPool,
+    lastResortEvent,
+    cultivationSnapshot,
+} from './cultivation'
 import type { RNG } from '@remake/vitex'
 import { pickWeight, random } from '@remake/vitex'
 import { produce, enableMapSet } from 'immer'
@@ -46,6 +60,10 @@ export interface NextResult {
     events: Event['id'][]
     talents: Talent['id'][]
     end: boolean
+    /** 本局结局；null 表示还在继续 */
+    ending: EndingType | null
+    /** 当年结束后的修仙快照，供 UI / 多人同步使用 */
+    cultivation: CultivationSnapshot
 }
 
 /** 年度奇遇：每年独立判定一次，命中就触发事件（可获得天赋） */
@@ -58,6 +76,8 @@ export interface Encounter {
     talent?: Talent['id']
     /** 只在年龄不超过该值时判定（含该年龄），不填则不限 */
     maxAge?: number
+    /** 只在年龄不低于该值时判定（含该年龄），不填则不限 */
+    minAge?: number
 }
 
 export interface NextOptions {
@@ -80,9 +100,10 @@ export function next(
     let current = tr.state
     const encounterEvents: Event['id'][] = []
     const encounterTalents: Talent['id'][] = []
-    for (const { event: id, rate, talent, maxAge } of options?.encounters ??
-        []) {
+    for (const { event: id, rate, talent, maxAge, minAge } of options
+        ?.encounters ?? []) {
         if (maxAge != null && age > maxAge) continue
+        if (minAge != null && age < minAge) continue
         if (talent != null && current.talents.has(talent)) continue
         if (current.events.has(id)) continue
         if (random(1_000_000 - 1, 0, rng) >= rate * 1_000_000) continue
@@ -102,26 +123,66 @@ export function next(
             encounterTalents.push(talent)
         }
     }
-    const events = ages.get(age)!.event
-    let event: Event['id'] | null = null
-    for (const level of events) {
-        const filtered = level.filter(([e]) => ec(e, current, profile))
-        if (filtered.length < 1) continue
-        event = pickWeight(filtered, rng)
-        break
+
+    // ① 百岁自动入道：不拿盒子的人也能走上标准修行路
+    if (shouldAutoStart(current, age)) {
+        const entryId = pickEntryEvent(rng)
+        current = etr(entryId, current, profile).state
+        encounterEvents.push(entryId)
     }
-    if (event === null)
-        throw new Error('No event could be picked for age ' + age)
-    const er = etr(event, current, profile)
-    const ar = atr(Ao.Trajectory, er.state, profile)
-    const end = ar.state.life < 1
+
+    // ② 年度修为 → 小境界 → 瓶颈 → 大境界突破 → 渡劫飞升
+    const advance = advanceCultivation(current, rng)
+    current = advance.state
+    const broadcasts: Event['id'][] = []
+    for (const id of advance.broadcasts) {
+        if (current.ending) break
+        const result = etr(id, current, profile)
+        current = result.state
+        broadcasts.push(...result.triggers)
+    }
+
+    // ③ 动态事件池：年龄层 + 境界层 + 阶段层 + 兜底，500 岁之后同样有内容
+    const randomEvents: Event['id'][] = []
+    if (!current.ending && current.life >= 1) {
+        const pool = resolveEventPool(age, current)
+        let picked: Event['id'] | null = null
+        for (const level of pool) {
+            const filtered = level.filter(([e]) => ec(e, current, profile))
+            if (filtered.length < 1) continue
+            picked = pickWeight(filtered, rng)
+            break
+        }
+        if (picked === null) picked = lastResortEvent(rng)
+        if (picked !== null) {
+            const er = etr(picked, current, profile)
+            current = er.state
+            randomEvents.push(...er.triggers)
+        } else {
+            // 兜底表都空了也不抛异常，免得整个多人房间被一个人卡住
+            console.warn('[core] no event available at age', age)
+        }
+    }
+
+    // ④ 通用死亡判定：本年全部事件（含死亡分支里的复活事件）结算完，
+    // 生命仍然 < 1 才判定身死。复活天赋（死者苏生等）因此能正常救人。
+    if (!current.ending && current.life < 1) {
+        current = produce(current, draft => {
+            draft.ending = 'death'
+        })
+    }
+
+    const ar = atr(Ao.Trajectory, current, profile)
+    const end = ar.state.life < 1 || ar.state.ending !== null
     return {
         state: ar.state,
         age,
         achievements: ar.triggers,
-        events: [...encounterEvents, ...er.triggers],
+        events: [...encounterEvents, ...broadcasts, ...randomEvents],
         talents: [...tr.triggers, ...encounterTalents],
         end,
+        ending: ar.state.ending,
+        cultivation: cultivationSnapshot(ar.state),
     }
 }
 

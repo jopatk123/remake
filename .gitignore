@@ -115,3 +115,6 @@ public/data
 *.cache.*
 # WorkBuddy 本地数据
 .workbuddy/
+
+# macOS 目录元数据
+.DS_Store

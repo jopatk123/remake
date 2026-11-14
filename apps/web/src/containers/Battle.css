@@ -288,6 +288,11 @@
         .tag { font-size: 0.75rem; }
     }
 
+    .log-inner > li.log-text {
+        display: block;
+        white-space: pre-line;
+    }
+
     .battle-empty {
         font-size: 0.85rem;
         opacity: 0.5;

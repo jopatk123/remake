@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
 import { useLayoutEffect, useEffect } from 'react'
 import AnimatedProp from '@/components/AnimatedProp'
-import { useNext, useGotoSummary, useSetStep, Step } from '@remake/hooks'
+import CultivationBar from '@/components/CultivationBar'
+import { useNext, useGotoSummary, useSetStep, Step, useGameState } from '@remake/hooks'
+import { EndingName } from '@remake/core'
 import { useJudge } from '@/hooks/judge'
 import { AutoInterval } from '@/config'
 import { toastAchvs } from '@/toast/Achv'
@@ -24,6 +26,7 @@ function Properties() {
 /** 单机：点一下过一年，本地直接推进 */
 function Solo() {
     const [{ logs, ended }, next] = useNext()
+    const state = useGameState()
     const [auto, setAuto] = useState(false)
     const logRef = useRef<HTMLUListElement>(null)
     const autoRef = useRef(0)
@@ -53,9 +56,11 @@ function Solo() {
         else autoRef.current = window.setInterval(handleNext, AutoInterval)
         return () => window.clearInterval(autoRef.current)
     }, [auto, handleNext])
+    const ending = state?.ending ? EndingName[state.ending] : null
     return (
         <div className="screen play">
             <Properties />
+            <CultivationBar />
             <ul
                 className="logs hide-scrollbar"
                 onClick={handleNext}
@@ -80,7 +85,7 @@ function Solo() {
                 )}
                 {ended && (
                     <button className="primary" onClick={handleGotoSummary}>
-                        人生总结
+                        {ending ? `${ending} · 人生总结` : '人生总结'}
                     </button>
                 )}
             </div>

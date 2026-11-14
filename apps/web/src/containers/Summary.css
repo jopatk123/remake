@@ -1,5 +1,39 @@
 .screen.summary {
     gap: 1rem;
+
+    .cultivation-summary {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        width: 100%;
+        padding: 0.55rem 0.8rem;
+        box-sizing: border-box;
+        border-radius: var(--radius-small);
+        border: 0.0625rem solid color-mix(in srgb, var(--grade-color) 50%, transparent);
+        background: var(--surface-background);
+        box-shadow: var(--shadow-card);
+        animation: judge-reveal 0.45s var(--ease-out) both;
+
+        .cs-label {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .cs-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--grade-color);
+        }
+
+        .cs-meta {
+            margin-left: auto;
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+    }
+
     ul.judge-list {
         display: flex;
         flex-direction: row;

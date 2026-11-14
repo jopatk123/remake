@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { summary as score } from '@remake/core/state'
+import { realmTitle } from '@remake/core'
 import { useGameState, useLogs } from '@remake/hooks'
 import { LOG_LIMIT, type LogLine } from '@remake/multi'
 import * as client from './client'
@@ -45,11 +46,15 @@ export function useMultiMatch(next: () => number[], ended: boolean) {
 
     useEffect(() => {
         if (!active || !state) return
-        const key = `${state.props.current.age}:${state.life}`
-        if (synced.current === key) return
-        synced.current = key
         const { age, charm, intelligence, strength, money, spirit } =
             state.props.current
+        const key = `${age}:${state.life}`
+        if (synced.current === key) return
+        // 死亡那一年的日志还没写进 atom 时先别上报：否则 deathEventId
+        // 会去上一年的日志里找死因，榜单就会出现错误 / 空白的死因。
+        // 等 logs 更新后 effect 会再跑一次，那时才真正 sync 阵亡状态。
+        if (state.life <= 0 && logs.at(-1)?.age !== age) return
+        synced.current = key
         const lines: LogLine[] = logs.slice(-LOG_LIMIT).map(log => ({
             age: log.age,
             events: log.events,
@@ -63,7 +68,12 @@ export function useMultiMatch(next: () => number[], ended: boolean) {
             summary: score(state),
             props: { charm, intelligence, strength, money, spirit },
             logs: lines,
-            death: state.life > 0 ? null : deathEventId(logs),
+            death: state.life > 0 ? null : deathEventId(lines),
+            realm: state.cultivation.realm,
+            realmTitle: state.cultivation.started
+                ? realmTitle(state.cultivation.realm, state.cultivation.minor)
+                : undefined,
+            ending: state.ending,
         })
     }, [active, state, logs])
 

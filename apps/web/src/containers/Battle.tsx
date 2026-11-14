@@ -8,7 +8,7 @@
  * 推进是全自动的：不用点“继续”，服务端按节拍往下走。想停下来读文字时
  * 谁都可以按“暂停”，再按一次就继续；嫌快嫌慢谁都能调节拍。
  *
- * 全员阵亡后不马上切页面：先在结算浮层上播几秒倒计时，把名次和死因看完，
+ * 所有人结束后不马上切页面：先在结算浮层上播几秒倒计时，把名次和死因看完，
  * 倒计时归零、服务端把房间收回大厅时才退回房间页。
  */
 import { useCallback, useLayoutEffect, useRef } from 'react'
@@ -17,6 +17,7 @@ import { SPEEDS } from '@remake/multi'
 import { judgeGradeByValue } from '@/config'
 import { Log } from '@/components/LogList'
 import AnimatedProp from '@/components/AnimatedProp'
+import CultivationBar from '@/components/CultivationBar'
 import { DanmakuInput, DanmakuTrack } from '@/components/Danmaku'
 import { Ranking } from '@/components/Ranking'
 import { useJudge } from '@/hooks/judge'
@@ -129,6 +130,7 @@ function MyColumn({ name, age, ended, paused, over, tone, leading, logs }: MyCol
                 <span className="age font-mono">{age}岁</span>
             </header>
             <MyProps />
+            <CultivationBar compact />
             <ul className="logs battle-logs hide-scrollbar" ref={ref}>
                 {logs.map((log, index) => (
                     <Log
@@ -243,8 +245,23 @@ export function Battle() {
     const cols = columnsFor(players.length)
     const waiting = room.waiting
     const over = room.phase === 'over'
+    // 领先判定与服务端排名一致：飞升 > 境界 > 年龄 > 总评
+    const endingRank = (ending: PlayerView['ending']) =>
+        ending === 'ascend' || ending === 'transcend'
+            ? 3
+            : ending === 'leave-world'
+              ? 2
+              : ending === 'reincarnation'
+                ? 1
+                : 0
     const leaderId = players.length > 1
-        ? [...players].sort((a, b) => b.age - a.age || b.summary - a.summary)[0]?.id
+        ? [...players].sort(
+              (a, b) =>
+                  endingRank(b.ending) - endingRank(a.ending) ||
+                  (b.realm ?? 0) - (a.realm ?? 0) ||
+                  b.age - a.age ||
+                  b.summary - a.summary,
+          )[0]?.id
         : null
     /** 还在等别人选天赋时，「继续」没有意义，按钮先不出现；收摊那一帧也不给按 */
     const canToggle = room.phase === 'playing' && waiting.length === 0

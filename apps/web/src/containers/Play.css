@@ -132,6 +132,11 @@ ul.log-inner {
         flex-direction: row;
         gap: 0.5rem;
     }
+
+    > li.log-text {
+        display: block;
+        white-space: pre-line;
+    }
 }
 
 @keyframes log-latest-in {

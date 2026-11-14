@@ -27,7 +27,8 @@ describe('死因事件', () => {
 
     test('文本按 id 查表，换行压平、超长截断，未知 id 返回 null', () => {
         expect(deathText(10003, 30)).toBe('你生了场重病。')
-        expect(deathText(10000, 30)).toBe('你死了。')
+        // 「你死了。」是通用死亡占位，写进榜单等于没说，交给 Death 组件兜底
+        expect(deathText(10000, 30)).toBeNull()
         expect(deathText(10779, 30)).toContain('居然还有人在人生重开')
         expect(deathText(11503, 30)?.length).toBeLessThanOrEqual(120)
         expect(deathText(null, 30)).toBeNull()

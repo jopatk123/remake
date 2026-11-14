@@ -10,3 +10,19 @@ export { pull, exclude } from './talent'
 export { uniqueGenerate, pullChara, charaPropToBaseAlloc } from './character'
 export { startUnique, startChara } from './character'
 export { pick, start, next, summary, end } from './game'
+export {
+    applyCultivationEffects,
+    advanceCultivation,
+    resolveEventPool,
+    cultivationSnapshot,
+    shouldAutoStart,
+} from './cultivation'
+export type { CultivationAdvance } from './cultivation'
+export { createCultivation } from './state'
+export type {
+    CultivationState,
+    CultivationSnapshot,
+    EndingType,
+} from '@remake/data'
+export { REALMS, TUNING, realmTitle, realmFullName, realmConfig } from '@remake/data'
+export { EndingName, CultivationPathName } from '@remake/data'

@@ -6,12 +6,14 @@ import type {
     RoomView,
     RankingItem,
     ServerMessage,
+    EndingType,
 } from '@remake/multi'
 import {
     DANMAKU_GAP,
     DANMAKU_LIMIT,
     LOG_LIMIT,
     MAX_PLAYERS,
+    MAX_ROUNDS,
     MAX_SPEED,
     MIN_SPEED,
     RESULT_MS,
@@ -28,7 +30,11 @@ const ENTER_TIMEOUT = Math.max(1000, Number(process.env.ENTER_TIMEOUT ?? 60_000)
  * 结算浮层停留时长。默认 5 秒，测试里调小：RESULT_MS=600 bun run src/index.ts
  * 用环境变量而不是协议常量，是为了让同一份代码在测试和线上跑不同节奏。
  */
-const RESULT_ENV = Number(process.env.RESULT_MS)
+// 注意别把 RESULT_MS= 这种空值当成 0：空字符串 Number('') === 0，
+// 会让结算浮层一闪而过，看起来就像「直接跳回房间」。
+const RESULT_ENV = process.env.RESULT_MS?.trim()
+    ? Number(process.env.RESULT_MS)
+    : NaN
 const RESULT = Number.isFinite(RESULT_ENV)
     ? Math.max(0, RESULT_ENV)
     : RESULT_MS
@@ -51,6 +57,10 @@ export interface Player {
     logs: LogLine[]
     /** 死因事件 id，活着时为 null；客户端上报，服务端只转发不解析 */
     death: number | null
+    /** 修仙境界 / 结局：只用于排名与展示，服务端不理解内容 */
+    realm: number
+    realmTitle: string | null
+    ending: EndingType | null
     send: Send
 }
 
@@ -63,6 +73,28 @@ export interface SyncPayload {
     logs: LogLine[]
     /** 阵亡那年死因事件的 id，老客户端可能不带 */
     death?: number | null
+    /** 修仙进度，老客户端可能不带 */
+    realm?: number
+    realmTitle?: string
+    ending?: EndingType | null
+}
+
+/** 结局权重：飞升 / 超脱是圆满通关，优先于其他所有结局 */
+function endingScore(ending: EndingType | null, alive: boolean): number {
+    switch (ending) {
+        case 'ascend':
+        case 'transcend':
+            return 4
+        case 'leave-world':
+            return 3
+        case 'reincarnation':
+            return 2
+        case 'death':
+            return 0
+        default:
+            // 旧客户端不上报结局时，还活着的人仍应排在已阵亡的人前面
+            return alive ? 1 : 0
+    }
 }
 
 /**
@@ -72,8 +104,9 @@ export interface SyncPayload {
  * 谁都可能想停下来读一眼文字，所以 pause 不做权限 —— 任何人按下去都停，
  * 任何人再按一次都继续，这是唯一不会把人卡住的规则。节拍同理，谁都能调。
  *
- * 全员阵亡后不立刻收摊：先停在 over 阶段播 RESULT_MS 的结算倒计时，
- * 让对战页把名次和死因看完，到点才回大厅等下一局。
+ * 所有人跑完（阵亡 / 飞升 / 离世 / 转世）后不立刻收摊：先停在 over 阶段
+ * 播 RESULT_MS（默认 5 秒）的结算倒计时，让对战页把名次和死因看完，
+ * 到点才回大厅等下一局。
  */
 export class Room {
     readonly id: string
@@ -133,6 +166,9 @@ export class Room {
             props: null,
             logs: [],
             death: null,
+            realm: 0,
+            realmTitle: null,
+            ending: null,
             send,
         })
         if (host) this.hostId = id
@@ -186,6 +222,9 @@ export class Room {
             player.props = null
             player.logs = []
             player.death = null
+            player.realm = 0
+            player.realmTitle = null
+            player.ending = null
         }
         this.startClock()
         this.enterTimer = setTimeout(() => {
@@ -268,6 +307,12 @@ export class Room {
             Number.isFinite(payload.death)
         )
             player.death = payload.death
+        // 修仙进度只做类型校验后存着：飞升决定冠军归属，但不提前收摊
+        if (typeof payload.realm === 'number' && Number.isFinite(payload.realm))
+            player.realm = Math.max(0, Math.min(9, Math.round(payload.realm)))
+        if (typeof payload.realmTitle === 'string')
+            player.realmTitle = payload.realmTitle.slice(0, 24)
+        if (payload.ending) player.ending = payload.ending
         if (player.alive && !payload.alive) player.alive = false
         // 这一拍要是刚好结算了，checkOver 会自己广播带倒计时的房间视图
         if (!this.checkOver()) this.broadcastRoom()
@@ -311,6 +356,9 @@ export class Room {
         if (this.waiting || this.paused) return
         this.round++
         this.broadcast({ t: 'tick', round: this.round })
+        // 人生不再有 500 岁上限，房间层面留一个很长的回合保护，
+        // 免得极端情况下（谁都没飞升也没死）一局永远收不了摊。
+        if (this.round >= MAX_ROUNDS && this.checkOver()) return
         this.broadcastRoom()
     }
 
@@ -325,18 +373,35 @@ export class Room {
         this.enterTimer = null
     }
 
-    /** 全员阵亡时结算；返回 true 表示刚结算完、房间视图已经广播过了 */
+    /** 所有人跑完后结算；返回 true 表示刚结算完、房间视图已经广播过了 */
     private checkOver(): boolean {
         if (this.phase !== 'playing') return false
         if (this.round === 0) return false
-        // 全部阵亡才结算：比赛的是“谁走得远”，不是“谁活到最后”
-        if (this.alivePlayers().length > 0) return false
+        const players = [...this.players.values()]
+        // 两种收摊条件：所有人都结束（阵亡 / 飞升 / 离世 / 转世）/ 回合保护。
+        // 不再「有人飞升就提前收摊」：最后一个人结束前，其他列继续跑，
+        // 否则活着的人没有死因，榜单会出现一排「不明」。
+        // 进入超时后还没进来的人不阻塞结算：他们没跑这一局，年龄会停在 0。
+        const allEnded = players.every(
+            p => !p.alive || !this.entered.has(p.id),
+        )
+        const timeout = this.round >= MAX_ROUNDS
+        if (!allEnded && !timeout) return false
         this.phase = 'over'
         this.stopClock()
         if (this.enterTimer) clearTimeout(this.enterTimer)
         this.enterTimer = null
-        this.result = [...this.players.values()]
-            .sort((a, b) => b.age - a.age || b.summary - a.summary)
+        // 真正跑过这一局的人才参与「活着 > 阵亡」的排名；
+        // 卡在天赋页没进来的人不该压过已经阵亡的玩家。
+        const racing = (p: Player) => p.alive && this.entered.has(p.id)
+        this.result = players
+            .sort((a, b) => {
+                const av = endingScore(a.ending, racing(a))
+                const bv = endingScore(b.ending, racing(b))
+                if (av !== bv) return bv - av
+                if (a.realm !== b.realm) return b.realm - a.realm
+                return b.age - a.age || b.summary - a.summary
+            })
             .map((p, index) => ({
                 id: p.id,
                 name: p.name,
@@ -344,6 +409,11 @@ export class Room {
                 summary: p.summary,
                 rank: index + 1,
                 death: p.death,
+                alive: p.alive,
+                connected: p.connected,
+                realm: p.realm,
+                realmTitle: p.realmTitle ?? undefined,
+                ending: p.ending,
             }))
         // 先停在对战页的结算浮层上：最后一年刚滚出来的日志、名次和死因
         // 都来得及看，倒计时到点才把房间收回大厅。
@@ -397,6 +467,9 @@ export class Room {
             player.props = null
             player.logs = []
             player.death = null
+            player.realm = 0
+            player.realmTitle = null
+            player.ending = null
         }
         // 房主还在就接着当，不在了才随机换人（结算期间掉线也算不在）
         const host = this.hostId ? this.players.get(this.hostId) : undefined
@@ -438,6 +511,9 @@ export class Room {
             props: player.props,
             logs: player.logs,
             death: player.death,
+            realm: player.realm,
+            realmTitle: player.realmTitle ?? undefined,
+            ending: player.ending,
         }
     }
 

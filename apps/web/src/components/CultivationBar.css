@@ -1,0 +1,147 @@
+/* 境界条：沿用 grade-N 的 --grade-color，明暗主题自动适配 */
+.cultivation-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    width: 100%;
+    padding: 0.45rem 0.7rem 0.5rem;
+    box-sizing: border-box;
+    border-radius: var(--radius-small);
+    border: 0.0625rem solid color-mix(in srgb, var(--grade-color) 45%, transparent);
+    background: var(--surface-background);
+    color: var(--text-color);
+    box-shadow: var(--shadow-card);
+    animation: cultivation-in 0.45s var(--ease-out) both;
+
+    .cultivation-head {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .cultivation-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        flex: none;
+    }
+
+    .cultivation-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--grade-color);
+        letter-spacing: 0.04em;
+        flex: none;
+    }
+
+    .cultivation-path {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        flex: none;
+    }
+
+    .cultivation-bottleneck {
+        margin-left: auto;
+        font-size: 0.76rem;
+        color: var(--grade-color);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        min-width: 0;
+    }
+
+    .cultivation-track {
+        position: relative;
+        width: 100%;
+        height: 0.42rem;
+        border-radius: 999px;
+        overflow: hidden;
+        background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+    }
+
+    .cultivation-fill {
+        height: 100%;
+        width: var(--cultivation-percent, 0%);
+        border-radius: inherit;
+        background: linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--grade-color) 55%, transparent),
+            var(--grade-color)
+        );
+        transition: width 0.55s var(--ease-out);
+    }
+
+    .cultivation-meta {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.74rem;
+        color: var(--text-muted);
+
+        .cultivation-hint {
+            margin-left: auto;
+            color: var(--grade-color);
+        }
+
+        .cultivation-ending {
+            font-weight: 800;
+            color: var(--grade-color);
+        }
+    }
+
+    &.ascended {
+        border-color: var(--grade-color);
+        box-shadow: 0 0 1.25rem color-mix(in srgb, var(--grade-color) 35%, transparent);
+    }
+
+    /* 多人列里空间紧张：收掉瓶颈提示与次要说明，只留境界和进度 */
+    &.compact {
+        padding: 0.35rem 0.5rem 0.4rem;
+        gap: 0.22rem;
+
+        .cultivation-bottleneck,
+        .cultivation-path,
+        .cultivation-hint {
+            display: none;
+        }
+
+        .cultivation-title { font-size: 0.9rem; }
+        .cultivation-meta { gap: 0.45rem; font-size: 0.68rem; }
+        .cultivation-track { height: 0.32rem; }
+    }
+}
+
+@keyframes cultivation-in {
+    from { opacity: 0; transform: translateY(-0.4rem); }
+    to { opacity: 1; transform: none; }
+}
+
+/* 突破 / 飞升事件在日志里高亮，但不遮挡文字 */
+ul.logs li.log-breakthrough,
+ul.logs li.log-tribulation {
+    font-weight: 700;
+    color: var(--grade-color);
+    border-left: 0.18rem solid var(--grade-color);
+    padding-left: 0.5rem;
+}
+
+ul.logs li.log-ascend {
+    font-weight: 800;
+    color: var(--grade-color);
+    background: color-mix(in srgb, var(--grade-color) 12%, transparent);
+    border-radius: var(--radius-small);
+    padding: 0.15rem 0.5rem;
+    animation: log-ascend-in 0.6s var(--ease-out) both;
+}
+
+ul.logs li.log-omen {
+    color: var(--grade-color);
+    font-style: italic;
+}
+
+@keyframes log-ascend-in {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: none; }
+}

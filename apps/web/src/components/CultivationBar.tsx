@@ -1,0 +1,108 @@
+/**
+ * 修仙进度条。
+ *
+ * 100 岁入道后才出现；显示「境界 + 小阶段 + 修为进度 + 大道 / 天劫准备」。
+ * 单人页和多人对战里「自己」那一列共用这一套，紧凑模式只收起次要信息，
+ * 保证不遮挡日志（延续项目里「文字可读性优先」的约定）。
+ */
+import { useGameState } from '@remake/hooks'
+import {
+    realmConfig,
+    realmTitle,
+    TUNING,
+    CultivationPathName,
+    EndingName,
+} from '@remake/core'
+import './CultivationBar.css'
+
+export function CultivationBar({ compact = false }: { compact?: boolean }) {
+    const state = useGameState()
+    if (!state) return null
+    const c = state.cultivation
+    if (!c.started) return null
+
+    const cfg = realmConfig(c.realm)
+    const ascended = c.realm >= 9
+    const inTrial = c.realm === 8
+    // 渡劫期不再显示修为条，改显示九重雷劫的推进；其余境界显示修为。
+    const trialCurrent = Math.max(
+        0,
+        c.tribulation - c.tribulationBaseline,
+    )
+    const trialMax = inTrial
+        ? TUNING.tribulationStep * TUNING.tribulationTrials
+        : 1
+    const max = Math.max(1, inTrial ? trialMax : cfg.threshold)
+    const value = inTrial ? trialCurrent : c.progress
+    const percent = Math.max(0, Math.min(100, Math.round((value / max) * 100)))
+    const title = realmTitle(c.realm, c.minor)
+
+    return (
+        <div
+            className={`cultivation-bar grade-${cfg.grade} ${compact ? 'compact' : ''} ${ascended ? 'ascended' : ''}`}
+            title={cfg.description}
+        >
+            <div className="cultivation-head">
+                <span className="cultivation-label">境界</span>
+                <strong className="cultivation-title font-mono">{title}</strong>
+                <span className="cultivation-path">
+                    {CultivationPathName[c.path] ?? '凡人流'}
+                </span>
+                {c.bottleneck && !ascended && (
+                    <span
+                        className="cultivation-bottleneck"
+                        title={
+                            cfg.deathRisk >= 0.07
+                                ? `${cfg.need} 冲击此关恐有性命之忧`
+                                : cfg.need
+                        }
+                    >
+                        瓶颈 · {cfg.need}
+                        {cfg.deathRisk >= 0.07 && ' ⚠'}
+                    </span>
+                )}
+            </div>
+            <div
+                className="cultivation-track"
+                role="progressbar"
+                aria-label={inTrial ? '九重雷劫进度' : '修为进度'}
+                aria-valuemin={0}
+                aria-valuemax={max}
+                aria-valuenow={Math.floor(value)}
+            >
+                <div
+                    className="cultivation-fill"
+                    style={{ ['--cultivation-percent' as string]: `${percent}%` }}
+                />
+            </div>
+            <div className="cultivation-meta font-mono">
+                {inTrial ? (
+                    <span>雷劫 {c.tribulationStage}/{TUNING.tribulationTrials} 重</span>
+                ) : (
+                    <span>修为 {Math.floor(c.progress)}/{max}</span>
+                )}
+                <span>大道 {c.daos.length}/{TUNING.daosRequired}</span>
+                {!ascended && (
+                    <span className="cultivation-hint">
+                        {inTrial
+                            ? c.tribulationStage < TUNING.tribulationTrials
+                                ? '九重雷劫未尽，继续扛劫'
+                                : c.daos.length < TUNING.daosRequired
+                                  ? `九劫已过，还缺 ${TUNING.daosRequired - c.daos.length} 条大道`
+                                  : '大道圆满，可引飞升天劫'
+                            : c.realm >= 7
+                              ? cfg.need
+                              : `突破要点：${cfg.need}`}
+                    </span>
+                )}
+                {state.ending && (
+                    <span className="cultivation-ending">
+                        {EndingName[state.ending]}
+                    </span>
+                )}
+            </div>
+        </div>
+    )
+}
+
+export default CultivationBar

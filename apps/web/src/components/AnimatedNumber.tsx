@@ -1,20 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+
+const reducedMotionQuery = '(prefers-reduced-motion: reduce)'
+const mediaListeners = new Set<() => void>()
+
+function subscribeReducedMotion(callback: () => void) {
+    mediaListeners.add(callback)
+    if (mediaListeners.size === 1) {
+        window.matchMedia(reducedMotionQuery).addEventListener('change', () => {
+            for (const listener of mediaListeners) listener()
+        })
+    }
+    return () => mediaListeners.delete(callback)
+}
+
+function getReducedMotion() {
+    return window.matchMedia(reducedMotionQuery).matches
+}
 
 /** 数字只在自身内部逐帧更新，避免带动整张页面重渲染。 */
 export function useAnimatedNumber(value: number, duration = 400) {
     const [displayValue, setDisplayValue] = useState(value)
     const displayRef = useRef(value)
+    const reduced = useSyncExternalStore(
+        subscribeReducedMotion,
+        getReducedMotion,
+        () => false,
+    )
 
     useEffect(() => {
-        const startValue = displayRef.current
-        if (value === startValue) return
-        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        if (reduced) {
-            displayRef.current = value
-            setDisplayValue(value)
-            return
-        }
+        // 减少动态效果时直接展示终值，不做逐帧动画
+        if (reduced || value === displayRef.current) return
 
+        const startValue = displayRef.current
         let frame = 0
         let startedAt: number | null = null
         const update = (timestamp: number) => {
@@ -28,9 +45,9 @@ export function useAnimatedNumber(value: number, duration = 400) {
         }
         frame = requestAnimationFrame(update)
         return () => cancelAnimationFrame(frame)
-    }, [duration, value])
+    }, [duration, reduced, value])
 
-    return displayValue
+    return reduced ? value : displayValue
 }
 
 export function AnimatedNumber({
