@@ -244,6 +244,48 @@
             opacity: 0.85;
             font-variant-numeric: tabular-nums;
         }
+
+        /* 稀有天赋：夹在名字和年龄中间，窄列放不下就省略 / 收成 +N */
+        .battle-talents {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .battle-talent {
+            --color: var(--grade-color);
+            flex: 0 1 auto;
+            min-width: 0;
+            max-width: 5.5rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 0.3rem;
+            font-size: 0.65rem;
+            font-weight: normal;
+            line-height: 1.15rem;
+            color: var(--color);
+            border: 0.0625rem solid color-mix(in srgb, var(--grade-color) 70%, transparent);
+            border-radius: 0.2rem;
+            background: color-mix(in srgb, var(--grade-color) 12%, transparent);
+
+            &.grade-3 {
+                box-shadow: 0 0 0.35rem color-mix(in srgb, var(--grade-color) 35%, transparent);
+            }
+        }
+
+        .battle-talent-more {
+            flex-shrink: 0;
+            font-size: 0.65rem;
+            font-weight: normal;
+            opacity: 0.6;
+            font-variant-numeric: tabular-nums;
+        }
     }
 }
 

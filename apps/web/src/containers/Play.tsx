@@ -2,11 +2,12 @@ import { useState, useRef, useCallback } from 'react'
 import { useLayoutEffect, useEffect } from 'react'
 import AnimatedProp from '@/components/AnimatedProp'
 import CultivationBar from '@/components/CultivationBar'
-import { useNext, useGotoSummary, useSetStep, Step, useGameState } from '@remake/hooks'
+import { useNext, useGotoSummary, useSetStep, Step, useGameState, useProfile } from '@remake/hooks'
 import { EndingName } from '@remake/core'
 import { useJudge } from '@/hooks/judge'
 import { AutoInterval } from '@/config'
 import { toastAchvs } from '@/toast/Achv'
+import { emitRareFxFromNext } from '@/fx/rare'
 import { Log } from '@/components/LogList'
 import { useInMatch, useMulti } from '@/multi/useMulti'
 import { Battle } from './Battle'
@@ -26,6 +27,7 @@ function Properties() {
 /** 单机：点一下过一年，本地直接推进 */
 function Solo() {
     const [{ logs, ended }, next] = useNext()
+    const [profile] = useProfile()
     const state = useGameState()
     const [auto, setAuto] = useState(false)
     const logRef = useRef<HTMLUListElement>(null)
@@ -36,10 +38,11 @@ function Solo() {
         if (ended) return
         if (processRef.current) return
         processRef.current = true
-        const achievements = next()
-        toastAchvs(achievements)
+        const result = next()
+        toastAchvs(result.achievements)
+        emitRareFxFromNext(result, profile)
         processRef.current = false
-    }, [ended, next])
+    }, [ended, next, profile])
     const handleGotoSummary = useCallback(() => {
         if (!ended) return
         const achievements = gotoSummary()

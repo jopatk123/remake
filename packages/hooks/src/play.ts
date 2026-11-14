@@ -130,7 +130,7 @@ export const useNext = () => {
             endRef.current = true
             setEnded(true)
         }
-        return result.achievements
+        return result
     }, [state, profile, setState, setLogs, encounter])
     return [{ logs, ended }, nexter] as const
 }

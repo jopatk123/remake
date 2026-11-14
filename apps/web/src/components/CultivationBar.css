@@ -15,6 +15,8 @@
     animation: cultivation-in 0.45s var(--ease-out) both;
 
     .cultivation-head {
+        position: relative;
+        z-index: 1;
         display: flex;
         flex-direction: row;
         align-items: baseline;
@@ -54,6 +56,7 @@
 
     .cultivation-track {
         position: relative;
+        z-index: 1;
         width: 100%;
         height: 0.42rem;
         border-radius: 999px;
@@ -74,6 +77,8 @@
     }
 
     .cultivation-meta {
+        position: relative;
+        z-index: 1;
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
@@ -131,6 +136,128 @@
         animation: cultivation-ring-ascend 1.3s var(--ease-out) both;
     }
 
+    /* 入道 / 大境界突破：光效跟随修为条，多人模式里就落在自己那一列 */
+    .realm-fx {
+        --realm-color: var(--grade-color);
+        position: absolute;
+        inset: -0.3rem;
+        z-index: 0;
+        border-radius: inherit;
+        pointer-events: none;
+
+        /* 入道与飞升统一用最高稀有度的金色，避免炼气期 grade-0 太黯淡 */
+        &.kind-entry,
+        &.kind-ascend {
+            --realm-color: var(--color-grade-3);
+        }
+
+        .realm-fx-glow {
+            position: absolute;
+            inset: -70% -22%;
+            background: radial-gradient(
+                ellipse at 50% 50%,
+                color-mix(in srgb, var(--realm-color) 30%, transparent),
+                transparent 68%
+            );
+            opacity: 0;
+            animation: realm-fx-glow 1.4s var(--ease-out) both;
+        }
+
+        .realm-fx-beam {
+            position: absolute;
+            left: 50%;
+            bottom: 55%;
+            width: min(70%, 20rem);
+            height: 8rem;
+            transform: translateX(-50%);
+            transform-origin: bottom;
+            clip-path: polygon(28% 100%, 72% 100%, 100% 0, 0 0);
+            background: linear-gradient(
+                to top,
+                color-mix(in srgb, var(--realm-color) 38%, transparent),
+                transparent 82%
+            );
+            opacity: 0;
+            animation: realm-fx-beam 1.5s var(--ease-out) both;
+        }
+
+        .realm-fx-ring {
+            position: absolute;
+            inset: -0.15rem;
+            border: 0.125rem solid var(--realm-color);
+            border-radius: inherit;
+            opacity: 0;
+            animation: realm-fx-ring 1.15s var(--ease-out) both;
+
+            &.ring-2 { animation-delay: 0.16s; }
+        }
+
+        .realm-fx-label {
+            position: absolute;
+            left: 50%;
+            top: -1.55rem;
+            z-index: 2;
+            display: flex;
+            align-items: baseline;
+            gap: 0.3rem;
+            padding: 0.12rem 0.55rem;
+            white-space: nowrap;
+            color: var(--realm-color);
+            background: color-mix(
+                in srgb,
+                var(--base-background-color) 90%,
+                transparent
+            );
+            border: 0.0625rem solid var(--realm-color);
+            border-radius: 999px;
+            box-shadow: 0 0 0.9rem
+                color-mix(in srgb, var(--realm-color) 28%, transparent);
+            transform: translateX(-50%);
+            opacity: 0;
+            animation: realm-fx-label 1.7s var(--ease-spring) both;
+
+            em {
+                font-style: normal;
+                font-size: 0.7rem;
+                opacity: 0.78;
+            }
+
+            strong {
+                font-size: 0.92rem;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+            }
+        }
+
+        .realm-fx-particles {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 0;
+            height: 0;
+
+            > i {
+                position: absolute;
+                width: 0.24rem;
+                height: 0.24rem;
+                margin: -0.12rem;
+                border-radius: 50%;
+                background: var(--realm-color);
+                box-shadow: 0 0 0.4rem var(--realm-color);
+                opacity: 0;
+                animation: realm-fx-particle 1.1s var(--ease-out) both;
+                animation-delay: calc(var(--i) * 24ms);
+            }
+        }
+
+        &.kind-ascend {
+            .realm-fx-glow { animation-duration: 2.2s; }
+            .realm-fx-beam { height: 10rem; animation-duration: 2.1s; }
+            .realm-fx-ring { animation-duration: 1.8s; }
+            .realm-fx-label { animation-duration: 2.4s; }
+        }
+    }
+
     /* 多人列里空间紧张：收掉瓶颈提示与次要说明，只留境界和进度 */
     &.compact {
         padding: 0.35rem 0.5rem 0.4rem;
@@ -145,6 +272,64 @@
         .cultivation-title { font-size: 0.9rem; }
         .cultivation-meta { gap: 0.45rem; font-size: 0.68rem; }
         .cultivation-track { height: 0.32rem; }
+
+        .realm-fx {
+            .realm-fx-beam { height: 5.5rem; width: 62%; }
+            .realm-fx-label {
+                top: -1.35rem;
+                padding: 0.1rem 0.4rem;
+                em { font-size: 0.64rem; }
+                strong { font-size: 0.8rem; }
+            }
+        }
+    }
+}
+
+@keyframes realm-fx-glow {
+    0% { opacity: 0; transform: scale(0.96); }
+    28% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.06); }
+}
+
+@keyframes realm-fx-beam {
+    0% { opacity: 0; transform: translateX(-50%) scaleY(0.55); }
+    32% { opacity: 0.9; }
+    100% { opacity: 0; transform: translateX(-50%) scaleY(1.18); }
+}
+
+@keyframes realm-fx-ring {
+    0% { opacity: 0; transform: scale(0.97); }
+    25% { opacity: 0.95; }
+    100% { opacity: 0; transform: scale(1.22); }
+}
+
+@keyframes realm-fx-label {
+    0% { opacity: 0; transform: translate(-50%, 0.4rem) scale(0.94); }
+    22% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    78% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -0.3rem) scale(0.98); }
+}
+
+@keyframes realm-fx-particle {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.3); }
+    25% { opacity: 1; }
+    100% {
+        opacity: 0;
+        transform: translate(calc(var(--i) * 0.5rem - 2.25rem), -3.6rem) scale(0.9);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cultivation-bar .realm-fx-beam,
+    .cultivation-bar .realm-fx-particles,
+    .cultivation-bar .realm-fx-ring {
+        display: none;
+    }
+
+    .cultivation-bar .realm-fx-glow,
+    .cultivation-bar .realm-fx-label {
+        opacity: 1;
+        animation: none;
     }
 }
 

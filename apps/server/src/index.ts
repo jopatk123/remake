@@ -75,6 +75,7 @@ wss.on('connection', ws => {
                     summary: msg.summary,
                     props: msg.props,
                     logs: msg.logs,
+                    talents: msg.talents,
                     death: msg.death,
                     realm: msg.realm,
                     realmTitle: msg.realmTitle,

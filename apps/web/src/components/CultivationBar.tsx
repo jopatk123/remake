@@ -6,6 +6,7 @@
  * 保证不遮挡日志（延续项目里「文字可读性优先」的约定）。
  */
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useGameState } from '@remake/hooks'
 import {
     realmConfig,
@@ -18,6 +19,15 @@ import './CultivationBar.css'
 
 type PulseKind = 'breakthrough' | 'tribulation' | 'ascend'
 
+type RealmFxKind = 'entry' | 'realm' | 'ascend'
+
+interface RealmFx {
+    kind: RealmFxKind
+    label: string
+    title: string
+    seq: number
+}
+
 interface CultivationSnapshot {
     realm: number
     minor: number
@@ -25,11 +35,42 @@ interface CultivationSnapshot {
     started: boolean
 }
 
+/** 入道 / 大境界突破的局部光效：跟随修为条，多人模式里就落在自己那一列 */
+function RealmBurst({ fx }: { fx: RealmFx }) {
+    return (
+        <div
+            key={fx.seq}
+            className={`realm-fx kind-${fx.kind}`}
+            aria-hidden="true"
+        >
+            <span className="realm-fx-glow" />
+            <span className="realm-fx-beam" />
+            <span className="realm-fx-ring" />
+            <span className="realm-fx-ring ring-2" />
+            <span className="realm-fx-label">
+                <em>{fx.label}</em>
+                <strong>{fx.title}</strong>
+            </span>
+            <span className="realm-fx-particles">
+                {Array.from({ length: 10 }, (_, index) => (
+                    <i
+                        key={index}
+                        style={{ ['--i' as string]: index } as CSSProperties}
+                    />
+                ))}
+            </span>
+        </div>
+    )
+}
+
 export function CultivationBar({ compact = false }: { compact?: boolean }) {
     const state = useGameState()
     const [pulse, setPulse] = useState<PulseKind | null>(null)
+    const [realmFx, setRealmFx] = useState<RealmFx | null>(null)
     const previous = useRef<CultivationSnapshot | null>(null)
     const pulseTimer = useRef(0)
+    const realmTimer = useRef(0)
+    const realmSeq = useRef(0)
 
     /**
      * 只在「境界变化 / 雷劫推进 / 入道」这些真正的节点播一次光效，
@@ -48,18 +89,46 @@ export function CultivationBar({ compact = false }: { compact?: boolean }) {
         previous.current = next
         if (!last) return
         let kind: PulseKind | null = null
-        if (!last.started && c.started) kind = 'breakthrough'
-        else if (c.realm > last.realm)
+        let nextRealmFx: Omit<RealmFx, 'seq'> | null = null
+        if (!last.started && c.started) {
+            kind = 'breakthrough'
+            nextRealmFx = {
+                kind: 'entry',
+                label: '入道',
+                title: realmConfig(c.realm).fullName,
+            }
+        } else if (c.realm > last.realm) {
             kind = c.realm >= 9 ? 'ascend' : 'breakthrough'
-        else if (c.tribulationStage > last.trial) kind = 'tribulation'
+            nextRealmFx = {
+                kind: c.realm >= 9 ? 'ascend' : 'realm',
+                label: c.realm >= 9 ? '飞升' : '境界突破',
+                title: realmConfig(c.realm).fullName,
+            }
+        } else if (c.tribulationStage > last.trial) kind = 'tribulation'
         else if (c.minor > last.minor) kind = 'breakthrough'
         if (!kind) return
         setPulse(kind)
         window.clearTimeout(pulseTimer.current)
         pulseTimer.current = window.setTimeout(() => setPulse(null), 1000)
+
+        if (nextRealmFx) {
+            realmSeq.current += 1
+            setRealmFx({ ...nextRealmFx, seq: realmSeq.current })
+            window.clearTimeout(realmTimer.current)
+            realmTimer.current = window.setTimeout(
+                () => setRealmFx(null),
+                nextRealmFx.kind === 'ascend' ? 2600 : 1800,
+            )
+        }
     }, [state])
 
-    useEffect(() => () => window.clearTimeout(pulseTimer.current), [])
+    useEffect(
+        () => () => {
+            window.clearTimeout(pulseTimer.current)
+            window.clearTimeout(realmTimer.current)
+        },
+        [],
+    )
 
     if (!state) return null
     const c = state.cultivation
@@ -86,6 +155,7 @@ export function CultivationBar({ compact = false }: { compact?: boolean }) {
             className={`cultivation-bar grade-${cfg.grade} ${compact ? 'compact' : ''} ${ascended ? 'ascended' : ''} ${pulse ? `fx-${pulse}` : ''}`}
             title={cfg.description}
         >
+            {realmFx && <RealmBurst fx={realmFx} />}
             <div className="cultivation-head">
                 <span className="cultivation-label">境界</span>
                 <strong className="cultivation-title font-mono">{title}</strong>

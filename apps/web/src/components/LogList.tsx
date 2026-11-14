@@ -23,8 +23,9 @@ function LogTalent({ id }: { id: number }) {
     const talent = talents.get(id)
     if (!talent) return null
     const { name, description, grade } = talent
+    const rare = grade >= 3 ? ' log-rare' : ''
     return (
-        <li className={`grade-${grade}`}>
+        <li className={`grade-${grade}${rare}`}>
             <span className="tag font-mono">[天赋]</span>
             <span className="name">{name}</span>
             <span className="description">{description}</span>
@@ -61,7 +62,9 @@ function LogEvent({ id, post, offset }: LogEventProps) {
     }
     // 突破 / 天劫 / 飞升事件用 kind 做轻量高亮，不改动原有的稀有度配色。
     // log-text 用来保留事件文本里的换行：彩蛋歌词 / 长诗不挤成一整段。
-    const cls = `grade-${grade} log-text${item.kind ? ` log-${item.kind}` : ''}`
+    // 没有 kind 的橙色事件再补一个 log-rare，只让最新一年播一次入场光。
+    const rare = grade >= 3 && !item.kind ? ' log-rare' : ''
+    const cls = `grade-${grade} log-text${item.kind ? ` log-${item.kind}` : ''}${rare}`
     return (
         <>
             <li className={cls}>{event}</li>

@@ -22,6 +22,10 @@
                 animation: talent-reveal 0.42s var(--ease-out) both;
                 animation-delay: calc(var(--reveal-order, 0) * 45ms);
             }
+            &.talent-reveal.rare .talent {
+                animation: talent-rare-glow 1.3s ease-out both;
+                animation-delay: calc(var(--reveal-order, 0) * 45ms + 0.12s);
+            }
         }
     }
 }
@@ -29,4 +33,20 @@
 @keyframes talent-reveal {
     from { opacity: 0; transform: translateY(0.65rem) scale(0.985); }
     to { opacity: 1; transform: none; }
+}
+
+@keyframes talent-rare-glow {
+    0% {
+        box-shadow: 0 0.25rem 1.1rem
+            color-mix(in srgb, var(--grade-color) 12%, transparent);
+    }
+    30% {
+        box-shadow:
+            0 0 0 0.0625rem color-mix(in srgb, var(--grade-color) 55%, transparent),
+            0 0 1.6rem color-mix(in srgb, var(--grade-color) 38%, transparent);
+    }
+    100% {
+        box-shadow: 0 0.25rem 1.1rem
+            color-mix(in srgb, var(--grade-color) 20%, transparent);
+    }
 }

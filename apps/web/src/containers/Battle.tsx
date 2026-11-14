@@ -13,6 +13,7 @@
  */
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useGameState, useGoHome, useNext } from '@remake/hooks'
+import { talents } from '@remake/data'
 import { SPEEDS } from '@remake/multi'
 import { judgeGradeByValue } from '@/config'
 import { Log } from '@/components/LogList'
@@ -42,6 +43,57 @@ const SPEED_LABELS: Record<number, string> = {
     1500: '正常',
     800: '快',
     400: '极速',
+}
+
+/** 列顶部最多摆几个稀有天赋，多的收成 +N，窄列也放得下 */
+const RARE_TALENT_LIMIT = 3
+
+/** 紫色及以上才算稀有，白色 / 蓝色不上顶部 */
+const RARE_TALENT_GRADE = 2
+
+/**
+ * 列顶部的稀有天赋：橙色优先，其次紫色。
+ * 只显示名字，描述放在 title 里，避免把窄列撑开。
+ */
+function RareTalents({ ids }: { ids: readonly number[] }) {
+    const seen = new Set<number>()
+    const rare: { id: number; name: string; description: string; grade: number }[] = []
+    for (const id of ids) {
+        if (seen.has(id)) continue
+        seen.add(id)
+        const talent = talents.get(id)
+        if (!talent || talent.grade < RARE_TALENT_GRADE) continue
+        rare.push(talent)
+    }
+    if (rare.length === 0) return null
+    // 先按稀有度从高到低，同档保持获得顺序
+    rare.sort((a, b) => b.grade - a.grade)
+    const shown = rare.slice(0, RARE_TALENT_LIMIT)
+    const rest = rare.length - shown.length
+    return (
+        <span className="battle-talents" aria-label="稀有天赋">
+            {shown.map(talent => (
+                <span
+                    key={talent.id}
+                    className={`battle-talent grade-${talent.grade}`}
+                    title={`${talent.name}：${talent.description}`}
+                >
+                    {talent.name}
+                </span>
+            ))}
+            {rest > 0 && (
+                <span
+                    className="battle-talent-more"
+                    title={rare
+                        .slice(RARE_TALENT_LIMIT)
+                        .map(talent => talent.name)
+                        .join('、')}
+                >
+                    +{rest}
+                </span>
+            )}
+        </span>
+    )
 }
 
 /** 几个人排几列：4 人用 2×2 比一字排开每列宽一倍，读得清 */
@@ -94,10 +146,21 @@ interface MyColumnProps {
     over: boolean
     tone: number
     leading: boolean
+    talents: number[]
     logs: { age: number; events: number[]; talents: number[]; achievements: number[] }[]
 }
 
-function MyColumn({ name, age, ended, paused, over, tone, leading, logs }: MyColumnProps) {
+function MyColumn({
+    name,
+    age,
+    ended,
+    paused,
+    over,
+    tone,
+    leading,
+    talents,
+    logs,
+}: MyColumnProps) {
     const ref = useRef<HTMLUListElement>(null)
     useLayoutEffect(() => {
         requestAnimationFrame(() => {
@@ -127,6 +190,7 @@ function MyColumn({ name, age, ended, paused, over, tone, leading, logs }: MyCol
                     <span className="tag font-mono">我</span>
                     {leading && <span className="leader-tag">领先</span>}
                 </span>
+                <RareTalents ids={talents} />
                 <span className="age font-mono">{age}岁</span>
             </header>
             <MyProps />
@@ -187,6 +251,7 @@ function PeerColumn({
                     {player.name}
                     {leading && <span className="leader-tag">领先</span>}
                 </span>
+                <RareTalents ids={player.talents ?? []} />
                 <span className="age font-mono">{player.age}岁</span>
             </header>
             <PropRow props={player.props} />
@@ -339,6 +404,7 @@ export function Battle() {
                             over={over}
                             tone={index % 5}
                             leading={player.id === leaderId}
+                            talents={state ? [...state.talents] : []}
                             logs={logs}
                         />
                     ) : (

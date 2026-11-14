@@ -144,6 +144,28 @@ ul.log-inner {
     to { opacity: 1; transform: none; }
 }
 
+/* 橙色天赋 / 稀有奇遇只在「最新一年」播一次行内光，历史记录保持静态 */
+ul.logs li.log.latest .log-inner > li.log-rare {
+    animation: log-rare-in 0.62s var(--ease-out) both;
+}
+
+@keyframes log-rare-in {
+    0% {
+        opacity: 0.45;
+        background: color-mix(in srgb, var(--grade-color) 22%, transparent);
+        text-shadow: 0 0 1rem color-mix(in srgb, var(--grade-color) 45%, transparent);
+    }
+    55% {
+        opacity: 1;
+        background: color-mix(in srgb, var(--grade-color) 11%, transparent);
+    }
+    100% {
+        opacity: 1;
+        background: transparent;
+        text-shadow: none;
+    }
+}
+
 /* 飞升 / 超脱：整屏天光从下方升起，播完自动消失，不遮挡日志 */
 .screen.play.ending-ascend::before,
 .screen.play.ending-transcend::before {

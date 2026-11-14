@@ -117,6 +117,12 @@ export interface PlayerView {
     summary: number
     /** 当前属性快照，用于对手列的属性条 */
     props: Props | null
+    /**
+     * 本局已获得的天赋 id。各端查本地数据表取名字与稀有度，
+     * 对战页只挑其中紫色 / 橙色的展示在列顶部。
+     * 旧客户端不上报时缺省按空数组处理。
+     */
+    talents?: number[]
     /** 最近几年的日志，用于把对手这一列也画成一条人生 */
     logs: LogLine[]
     /**
@@ -198,6 +204,8 @@ export type ClientMessage =
           summary: number
           props: Props
           logs: LogLine[]
+          /** 本局已获得的天赋 id，用于在别人的屏幕顶部显示稀有天赋 */
+          talents?: number[]
           /** 阵亡那年死因事件的 id，活着时给 null；缺省按 null 处理 */
           death?: number | null
           /** 修仙进度（可选字段，旧客户端不带也能正常跑） */

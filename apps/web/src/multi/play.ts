@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { summary as score } from '@remake/core/state'
-import { realmTitle } from '@remake/core'
-import { useGameState, useLogs } from '@remake/hooks'
+import { realmTitle, type NextResult } from '@remake/core'
+import { useGameState, useLogs, useProfile } from '@remake/hooks'
 import { LOG_LIMIT, type LogLine } from '@remake/multi'
 import * as client from './client'
 import { deathEventId } from './death'
 import { useInMatch, useMulti } from './useMulti'
 import { toastAchvs } from '@/toast/Achv'
+import { emitRareFxFromNext } from '@/fx/rare'
 
 /**
  * 自动推进：服务端按节拍发 tick，收到就在本地过一年。
@@ -16,11 +17,15 @@ import { toastAchvs } from '@/toast/Achv'
  * 用「推进一年 → setState → next 换新 → effect 再跑」这个链子追赶，
  * 即使某次收到两拍也不会漏年。
  */
-export function useMultiMatch(next: () => number[], ended: boolean) {
+export function useMultiMatch(
+    next: () => Omit<NextResult, 'state'>,
+    ended: boolean,
+) {
     const active = useInMatch()
     const mp = useMulti()
     const state = useGameState()
     const logs = useLogs()
+    const [profile] = useProfile()
     const advanced = useRef(0)
     const synced = useRef('')
 
@@ -37,12 +42,14 @@ export function useMultiMatch(next: () => number[], ended: boolean) {
         }
         advanced.current += 1
         try {
-            toastAchvs(next())
+            const result = next()
+            toastAchvs(result.achievements)
+            emitRareFxFromNext(result, profile)
         } catch (error) {
             // 比如 400 岁复活后抽不到事件，兜底按阵亡处理，别让整个房间卡住
             console.error('[多人] 推进失败，按阵亡处理', error)
         }
-    }, [active, mp.round, ended, next])
+    }, [active, mp.round, ended, next, profile])
 
     useEffect(() => {
         if (!active || !state) return
@@ -68,6 +75,7 @@ export function useMultiMatch(next: () => number[], ended: boolean) {
             summary: score(state),
             props: { charm, intelligence, strength, money, spirit },
             logs: lines,
+            talents: [...state.talents],
             death: state.life > 0 ? null : deathEventId(lines),
             realm: state.cultivation.realm,
             realmTitle: state.cultivation.started

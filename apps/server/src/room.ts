@@ -40,6 +40,8 @@ const RESULT = Number.isFinite(RESULT_ENV)
     : RESULT_MS
 /** 结算期间重发房间视图的间隔：后加入 / 网络慢的人也能对上倒计时 */
 const RESULT_TICK = 500
+/** 每人最多记多少个天赋 id，防止异常客户端把包撑大 */
+const TALENT_LIMIT = 64
 
 export interface Player {
     id: string
@@ -53,6 +55,8 @@ export interface Player {
     life: number
     summary: number
     props: Props | null
+    /** 本局已获得的天赋 id，对战页用来在列顶部展示稀有天赋 */
+    talents: number[]
     /** 最近几年的人生摘要，别人的屏幕靠它把这一列画出来 */
     logs: LogLine[]
     /** 死因事件 id，活着时为 null；客户端上报，服务端只转发不解析 */
@@ -71,6 +75,8 @@ export interface SyncPayload {
     summary: number
     props: Props
     logs: LogLine[]
+    /** 本局已获得的天赋 id，老客户端可能不带 */
+    talents?: number[]
     /** 阵亡那年死因事件的 id，老客户端可能不带 */
     death?: number | null
     /** 修仙进度，老客户端可能不带 */
@@ -164,6 +170,7 @@ export class Room {
             life: 0,
             summary: 0,
             props: null,
+            talents: [],
             logs: [],
             death: null,
             realm: 0,
@@ -220,6 +227,7 @@ export class Room {
             player.life = 0
             player.summary = 0
             player.props = null
+            player.talents = []
             player.logs = []
             player.death = null
             player.realm = 0
@@ -298,6 +306,13 @@ export class Room {
         player.life = payload.life
         player.summary = payload.summary
         player.props = payload.props
+        // 天赋只做去重和截断：服务端不认识稀有度，筛选与排序交给各端
+        if (Array.isArray(payload.talents)) {
+            const ids = payload.talents.filter(
+                id => Number.isFinite(id) && id > 0,
+            )
+            player.talents = [...new Set(ids)].slice(-TALENT_LIMIT)
+        }
         // 只留最近若干年：整列要塞进一屏，历史太长既没必要也压包
         player.logs = payload.logs.slice(-LOG_LIMIT)
         // 死因只上报事件 id：校验完类型就存着，文本由各端查本地数据表渲染
@@ -465,6 +480,7 @@ export class Room {
             player.life = 0
             player.summary = 0
             player.props = null
+            player.talents = []
             player.logs = []
             player.death = null
             player.realm = 0
@@ -509,6 +525,7 @@ export class Room {
             life: player.life,
             summary: player.summary,
             props: player.props,
+            talents: player.talents,
             logs: player.logs,
             death: player.death,
             realm: player.realm,
