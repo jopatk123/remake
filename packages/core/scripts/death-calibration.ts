@@ -1,9 +1,11 @@
 /**
  * 死亡风险校准脚本（只读 + 临时改内存参数，不写任何文件）。
  *
- * 目标：活到 101 岁的玩家，最终飞升率 ≈ 5%。
+ * 目标：活到 101 岁的玩家，最终飞升率 ≈ 4%–5%。
  * 做法：对不同的 deathRiskScale 跑模拟，测出「到达 101 岁的局里飞升占比」，
  * 然后把最合适的 scale 烧进 TUNING。
+ * 注意：实际风险还会经过 softenRisk() 软化并受 deathRiskCap 封顶，
+ * 因此高倍率区间会逐渐饱和，不是线性放大。
  *
  * 在 packages/core 下运行：
  *   bun run scripts/death-calibration.ts

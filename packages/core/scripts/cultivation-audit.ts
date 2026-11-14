@@ -21,6 +21,8 @@ import {
     TRIAL_REALM,
     TUNING,
     TRIAL_BROADCAST_IDS,
+    REALMS,
+    softenRisk,
 } from '@remake/data'
 import { parse } from '@remake/condition'
 import baseEvents from '../../data/dist/event'
@@ -116,6 +118,19 @@ else if (JSON.stringify(death).includes('AGE![500]'))
     fail('死亡事件里仍残留 AGE![500] 复活限制')
 if (ages.has(501)) fail('age 表仍存在 501 岁（说明有人续了硬表）')
 
+// 死亡风险必须是真正的概率：任何境界在最高失败次数下都不能被软化到 100%
+if (TUNING.deathRiskCap >= 1)
+    fail(`deathRiskCap 必须小于 1，当前 ${TUNING.deathRiskCap}`)
+for (const realm of REALMS) {
+    const worst = softenRisk(
+        realm.deathRisk *
+            (1 + TUNING.deathEscalation * TUNING.deathEscalationCap) *
+            TUNING.deathRiskScale,
+    )
+    if (worst >= 1)
+        fail(`${realm.name} 的最坏死亡风险仍 >= 100%: ${worst}`)
+}
+
 // ── ② 批量模拟 ──────────────────────────────────────────────────────────
 function freshProfile() {
     return {
@@ -205,11 +220,9 @@ for (let run = 0; run < RUNS; run++) {
             // 坐化 51311）；若仍被随机池里的旧致死事件带走，校准即失效
             if (result.ending === 'death' && result.age >= 100) {
                 const cause = result.events.at(-1)
-                if (
-                    cause !== undefined &&
-                    ![51310, 51301, 51311].includes(cause) &&
-                    cause !== 10000
-                )
+                // 入道后的死亡必须来自引擎判定，通用死亡 10000 也不能放行，
+                // 否则旧链随机致死会重新污染飞升率校准。
+                if (![51310, 51301, 51311].includes(cause ?? -1))
                     badDeathCause++
             }
             if (firstLife && result.ending === 'ascend' && hit101) {

@@ -31,6 +31,7 @@ import {
     BACKLASH_DEATH_ID,
     DECAY_DEATH_ID,
     deathShield,
+    softenRisk,
     cultivationLayers,
     fallbackLayers,
     universalFallbackLayer,
@@ -272,14 +273,15 @@ export function advanceCultivation(
             d.decay += 1
             if (d.decay % 40 === 0) broadcasts.push(DECAY_BROADCAST_ID)
             if (d.decay > TUNING.decayDeathGrace) {
-                const risk =
+                const risk = softenRisk(
                     Math.min(
                         TUNING.decayDeathCap,
                         (d.decay - TUNING.decayDeathGrace) *
                             TUNING.decayDeathRate,
                     ) *
-                    (1 - deathShield(props, d)) *
-                    TUNING.deathRiskScale
+                        (1 - deathShield(props, d)) *
+                        TUNING.deathRiskScale,
+                )
                 if (random(1000, 0, rng) < risk * 1000) {
                     broadcasts.push(DECAY_DEATH_ID)
                     return
@@ -287,7 +289,7 @@ export function advanceCultivation(
             }
         }
 
-        d.progress += gain
+        d.progress = Math.max(0, d.progress + gain)
 
         // ── 渡劫期：九重雷劫逐重扛，不再「一年就飞升」 ────────────────
         // 用「本境累计准备度」而不是全局 tribulation：旧链 / 大道事件在
@@ -305,10 +307,11 @@ export function advanceCultivation(
             )
             while (d.tribulationStage < target) {
                 // 扛劫本身就有暴露风险：站上劫台不管成败都可能身死道消
-                const attemptRisk =
+                const attemptRisk = softenRisk(
                     TUNING.trialAttemptDeathRisk *
-                    (1 - deathShield(props, d)) *
-                    TUNING.deathRiskScale
+                        (1 - deathShield(props, d)) *
+                        TUNING.deathRiskScale,
+                )
                 if (random(1000, 0, rng) < attemptRisk * 1000) {
                     broadcasts.push(TRIBULATION_FAILURE_ID)
                     return
@@ -321,10 +324,11 @@ export function advanceCultivation(
                         d.tribulation - TUNING.tribulationStep,
                     )
                     broadcasts.push(TRIAL_FAIL_ID)
-                    const risk =
+                    const risk = softenRisk(
                         TUNING.trialDeathRisk *
-                        (1 - deathShield(props, d)) *
-                        TUNING.deathRiskScale
+                            (1 - deathShield(props, d)) *
+                            TUNING.deathRiskScale,
+                    )
                     if (random(1000, 0, rng) < risk * 1000)
                         broadcasts.push(TRIBULATION_FAILURE_ID)
                     break
@@ -394,13 +398,14 @@ export function advanceCultivation(
             // ── 冲击瓶颈：不管成败，站上去就有走火入魔的暴露风险 ────────
             // 境界越高越凶险，累计失败越多越凶险；道心/悟性/大道/护道可减伤。
             // 低方差设计：风险摊在一生多次尝试上，而不是失败那一把定生死。
-            const attemptRisk =
+            const attemptRisk = softenRisk(
                 cfg.deathRisk *
-                (1 +
-                    TUNING.deathEscalation *
-                        Math.min(d.failures, TUNING.deathEscalationCap)) *
-                (1 - deathShield(props, d)) *
-                TUNING.deathRiskScale
+                    (1 +
+                        TUNING.deathEscalation *
+                            Math.min(d.failures, TUNING.deathEscalationCap)) *
+                    (1 - deathShield(props, d)) *
+                    TUNING.deathRiskScale,
+            )
             if (random(1000, 0, rng) < attemptRisk * 1000) {
                 d.failures += 1
                 broadcasts.push(BACKLASH_DEATH_ID)
@@ -418,6 +423,9 @@ export function advanceCultivation(
                 d.progress = 0
                 d.bottleneck = false
                 d.breakthroughs += 1
+                // 失败次数只在本境界内累计：跨过大境界后重新计算，
+                // 避免炼气期的一次失败永久放大后期走火入魔风险。
+                d.failures = 0
                 // 身魂合一 / 万法归一 / 雷劫不侵：突破瞬间全属性+20%
                 applyBreakthroughGrowth(draft, previousRealm)
                 // 进入渡劫期时记下当前准备度，九劫从零开始逐重扛
@@ -432,7 +440,10 @@ export function advanceCultivation(
                 )
             } else {
                 d.failures += 1
-                d.progress = Math.floor(cfg.threshold * 0.6)
+                // 失败后退出瓶颈，必须重新把修为攒满才能再次冲关。
+                // 否则 60% 的修为惩罚只是展示数字，下一年仍会立刻重试。
+                d.bottleneck = false
+                d.progress = Math.max(0, Math.floor(cfg.threshold * 0.6))
                 broadcasts.push(
                     variant(BREAKTHROUGH_FAILURE_IDS, d.failures),
                 )

@@ -109,6 +109,11 @@ export function trigger(
     state: GameState,
     profile: ProfileState,
 ): TriggerResult<Event['id']> {
+    // 入道后，旧链的寿终 / 随机致死 / 旧飞升不再生效。
+    // 随机池已经由 check() 过滤，这里再兜住分支事件，避免旧链分支
+    // 绕过新体系直接把修士带走或送上天。
+    if (state.cultivation.started && LEGACY_BLOCKED_AFTER_START.has(eventId))
+        return { state, triggers: [] }
     const { effect, branch } = events.get(eventId)! as ExtendedEvent
     const clampNegative = negativeClampEnabled(state)
     const newState = produce(state, draft => {

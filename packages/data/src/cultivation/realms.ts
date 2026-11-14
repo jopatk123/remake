@@ -121,7 +121,7 @@ export const REALMS: readonly RealmConfig[] = [
         gain: 18,
         lifespan: 1100,
         breakRate: 0.58,
-        deathRisk: 0.07,
+        deathRisk: 0.09,
         grade: 2,
         description: '破丹成婴，元婴出窍，纵肉身毁去亦可夺舍。',
         need: '神识质变，须悟一条大道并渡过雷劫。',
@@ -136,7 +136,7 @@ export const REALMS: readonly RealmConfig[] = [
         gain: 21,
         lifespan: 1800,
         breakRate: 0.54,
-        deathRisk: 0.12,
+        deathRisk: 0.16,
         grade: 2,
         description: '元婴化神，神念可覆一方天地。',
         need: '感悟虚空法则，需跨界历练。',
@@ -150,8 +150,8 @@ export const REALMS: readonly RealmConfig[] = [
         threshold: 1000,
         gain: 24,
         lifespan: 2800,
-        breakRate: 0.5,
-        deathRisk: 0.2,
+        breakRate: 0.42,
+        deathRisk: 0.22,
         grade: 2,
         description: '炼虚合道，肉身与天地规则开始共鸣。',
         need: '身魂合一，须勘破一重心魔。',
@@ -165,8 +165,8 @@ export const REALMS: readonly RealmConfig[] = [
         threshold: 1200,
         gain: 27,
         lifespan: 4000,
-        breakRate: 0.46,
-        deathRisk: 0.32,
+        breakRate: 0.36,
+        deathRisk: 0.35,
         grade: 3,
         description: '元婴、元神、肉身三者合一，一念可改山河。',
         need: '万法归一，须融会至少两条大道。',
@@ -180,8 +180,8 @@ export const REALMS: readonly RealmConfig[] = [
         threshold: 1450,
         gain: 30,
         lifespan: 6000,
-        breakRate: 0.42,
-        deathRisk: 0.5,
+        breakRate: 0.3,
+        deathRisk: 0.55,
         grade: 3,
         description: '万法归一，修为已至凡界顶点，只待天劫。',
         need: '主动引动飞升天劫，需护道人与本命法宝。',
@@ -250,7 +250,7 @@ export const TUNING = {
     tribulationPerYear: 6,
     /** 引动飞升所需的大道数量 */
     daosRequired: 5,
-    /** 单重雷劫失败概率（失败只退回准备度，不直接结束人生） */
+    /** 单重雷劫失败概率（失败会退回准备度，并可能被雷劫反噬） */
     trialFailRate: 0.06,
     /** 屡劫不成才会身死道消的失败次数门槛 */
     trialDoomThreshold: 14,
@@ -265,11 +265,17 @@ export const TUNING = {
     decayGrace: 0,
     // ── 死亡风险：101 岁入道后，飞升应是少数人的结局 ────────────────────
     /** 全部死亡风险的总开关，校准「101 岁起飞升率 ≈ 5%」用 */
-    deathRiskScale: 2.3,
+    deathRiskScale: 2.8,
+    /**
+     * 单次死亡判定的硬上限。
+     * 风险会先经过 softenRisk() 软化，再夹到这个值，避免叠乘后出现
+     * 「风险 115% = 必死」的确定性死亡，也避免死亡减伤失去意义。
+     */
+    deathRiskCap: 0.55,
     /** 渡劫期每扛一重雷劫的普通身死风险（不管成败，站上去就有暴露） */
-    trialAttemptDeathRisk: 0.06,
+    trialAttemptDeathRisk: 0.1,
     /** 单次渡劫失败（雷劫反噬）当场身死的额外概率 */
-    trialDeathRisk: 0.5,
+    trialDeathRisk: 0.2,
     /** 每次累计失败让下一次突破失败的死亡风险递增的比例与封顶次数 */
     deathEscalation: 0.12,
     deathEscalationCap: 12,
@@ -351,6 +357,16 @@ export function breakRate(state: CultivationState, props: {
         state.failures * TUNING.failurePity -
         Math.min(state.decay, TUNING.decayCap) * TUNING.decayPenalty
     return Math.max(TUNING.minBreakRate, Math.min(TUNING.maxBreakRate, raw))
+}
+
+/**
+ * 把原始风险压到 [0, deathRiskCap]：
+ * raw/(1+raw) 在 raw 较小时接近原值，在 raw 变大时逐渐饱和，
+ * 既保留高境界的压迫感，又不会出现「叠乘后必定身死」。
+ */
+export function softenRisk(raw: number): number {
+    const value = Math.max(0, raw)
+    return Math.min(TUNING.deathRiskCap, value / (1 + value))
 }
 
 /** 是否满足引动飞升天劫的条件：九劫尽过 + 大道圆满 */
