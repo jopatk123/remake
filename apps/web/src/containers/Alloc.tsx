@@ -96,15 +96,29 @@ export function Alloc() {
                     </li>
                 ))}
             </ul>
-            <ul className={`alloc ${isClassic ? 'classic' : 'modify'}`}>
-                <li className={`left left-${left}`}>
-                    <span className="name">剩余点数</span>
-                    <button
-                        className="font-mono"
-                        onClick={() => setShowDetail(!showDetail)}
+            <section className="alloc-panel" aria-label="资质分配">
+                <div className="alloc-panel-head">
+                    <div
+                        className={`alloc-budget ${left ? 'pending' : 'ready'}`}
                     >
-                        {left}
-                    </button>
+                        <span className="alloc-budget-name">剩余点数</span>
+                        <button
+                            className="font-mono"
+                            aria-expanded={showDetail}
+                            aria-label={`剩余点数 ${left}，点按查看明细`}
+                            onClick={() => setShowDetail(!showDetail)}
+                        >
+                            {left}
+                        </button>
+                    </div>
+                    <p
+                        className={`alloc-hint ${left ? '' : 'ready'}`}
+                        aria-live="polite"
+                    >
+                        {left
+                            ? '将点数分配至资质，归零方可启程'
+                            : '点数已清 · 可以落笔成章'}
+                    </p>
                     {showDetail && (
                         <PointsDetail
                             base={base}
@@ -112,29 +126,33 @@ export function Alloc() {
                             fixed={!isClassic}
                         />
                     )}
-                </li>
-                {keys(alloc).map(key => (
-                    <li
-                        key={key}
-                        className={`property grade-${judgeGradeByValue(key, final[key])}`}
-                    >
-                        <span className="name">
-                            {properties[key]}
+                </div>
+                <ul className={`alloc ${isClassic ? 'classic' : 'modify'}`}>
+                    {keys(alloc).map(key => (
+                        <li
+                            key={key}
+                            className={`property grade-${judgeGradeByValue(key, final[key])}`}
+                        >
+                            <span className="name">
+                                {properties[key]}
+                                {!isClassic && (
+                                    <span className="font-mono">[{ba[key]}]</span>
+                                )}
+                            </span>
                             {!isClassic && (
-                                <span className="font-mono">[{ba[key]}]</span>
+                                <span className="final font-mono">
+                                    {final[key]}
+                                </span>
                             )}
-                        </span>
-                        {!isClassic && (
-                            <span className="font-mono">{final[key]}</span>
-                        )}
-                        <AllocInput
-                            point={alloc[key]}
-                            name={properties[key]}
-                            onChange={value => allocator(key, value)}
-                        />
-                    </li>
-                ))}
-            </ul>
+                            <AllocInput
+                                point={alloc[key]}
+                                name={properties[key]}
+                                onChange={value => allocator(key, value)}
+                            />
+                        </li>
+                    ))}
+                </ul>
+            </section>
             <div className="controls">
                 <button className="secondary" onClick={() => random()}>
                     随机分配
