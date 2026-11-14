@@ -15,6 +15,7 @@ type Row = [
     effect: Talent['effect'],
     condition?: string,
     group?: string,
+    extra?: Partial<Talent>,
 ]
 
 /** 灵根 / 道胎统一互斥组 */
@@ -79,21 +80,71 @@ const ROWS: Row[] = [
     [3006, '筑基丹', '筑基时得一枚丹药相助', 1, { STR: 4 }, 'REALM>=1'],
     [3007, '丹成一品', '金丹品质远胜同辈', 2, { STR: 4, INT: 3 }, 'REALM>=2'],
     [3008, '元婴出窍', '神识可离体而行', 2, { INT: 5 }, 'REALM>=3'],
-    [3009, '化神之资', '神念覆盖一方天地', 3, { INT: 6, SPR: 2 }, 'REALM>=4'],
+    [
+        3009,
+        '化神之资',
+        '负面属性强行归正，90岁前死亡必定复活',
+        3,
+        undefined,
+        undefined,
+        undefined,
+        {
+            negativeClamp: true,
+            immortalUntil: 90,
+            revivePriority: 1,
+            reviveEvent: 20010,
+        },
+    ],
     [3010, '虚空法则', '炼虚之后进境更快', 2, { INT: 5, STR: 3 }, 'REALM>=5'],
-    [3011, '身魂合一', '三者合一，再无短板', 3, { STR: 5, SPR: 4 }, 'REALM>=6'],
-    [3012, '万法归一', '大乘之后万法皆通', 3, { INT: 8 }, 'REALM>=7'],
-    [3013, '雷劫不侵', '渡劫时肉身更扛得住', 3, { STR: 8 }, 'REALM>=8'],
+    [
+        3011,
+        '身魂合一',
+        '突破合体时全属性+20%',
+        3,
+        undefined,
+        undefined,
+        undefined,
+        { breakthroughPercent: { realm: 6, percent: 20 } },
+    ],
+    [
+        3012,
+        '万法归一',
+        '突破大乘时全属性+20%',
+        3,
+        undefined,
+        undefined,
+        undefined,
+        { breakthroughPercent: { realm: 7, percent: 20 } },
+    ],
+    [
+        3013,
+        '雷劫不侵',
+        '突破渡劫时全属性+20%',
+        3,
+        undefined,
+        undefined,
+        undefined,
+        { breakthroughPercent: { realm: 8, percent: 20 } },
+    ],
     [3014, '五行俱全', '五行大道同悟', 2, { INT: 5, MNY: 3 }, 'DAO>=5'],
     [3015, '道心坚固', '心魔难侵', 2, { SPR: 6 }, 'DAO>=3'],
     [3016, '护道之人', '总有人替你守着阵眼', 2, { CHR: 4, SPR: 3 }, 'STRT>0'],
     [3017, '屡败屡战', '每次失败都换来一点长进', 1, { STR: 3, INT: 3 }, 'FAIL>=2'],
     [3018, '仙寿绵长', '活过千岁之后气机更沉', 2, { STR: 5, SPR: 5 }, 'AGE>=1000'],
-    [3019, '太古遗脉', '体内流着另一套法门的血', 3, { STR: 6, INT: 6 }, 'PATH=1'],
+    [
+        3019,
+        '太古遗脉',
+        '入道炼气时全属性+30',
+        3,
+        undefined,
+        'PATH=1',
+        undefined,
+        { entryAll: { value: 30, path: 1 } },
+    ],
 ]
 
 export const cultivationTalents = new Map<Talent['id'], Talent>(
-    ROWS.map(([id, name, description, grade, effect, condition, group]) => [
+    ROWS.map(([id, name, description, grade, effect, condition, group, extra]) => [
         id,
         {
             id,
@@ -103,6 +154,7 @@ export const cultivationTalents = new Map<Talent['id'], Talent>(
             ...(effect ? { effect } : {}),
             ...(condition ? { condition } : {}),
             ...(group ? { group } : {}),
+            ...extra,
             max: 1,
         },
     ]),

@@ -6,10 +6,15 @@ import {
 } from '@remake/data'
 import type { CultivationEventMeta } from '@remake/data'
 import type { Properties, GameState, ProfileState } from './state'
-import { propsEffect, createFlatState } from './state'
+import {
+    propsEffect,
+    createFlatState,
+    negativeClampEnabled,
+} from './state'
 import { check as checkCondition } from '@remake/condition'
 import type { TriggerResult } from './game'
 import { applyCultivationEffects } from './cultivation'
+import { tryRevive } from './talent'
 import { produce, enableMapSet } from 'immer'
 enableMapSet()
 
@@ -105,6 +110,7 @@ export function trigger(
     profile: ProfileState,
 ): TriggerResult<Event['id']> {
     const { effect, branch } = events.get(eventId)! as ExtendedEvent
+    const clampNegative = negativeClampEnabled(state)
     const newState = produce(state, draft => {
         draft.events.add(eventId)
         const age = draft.props.current.age
@@ -124,22 +130,47 @@ export function trigger(
         if (effect.STR) pe.strength = effect.STR
         if (effect.MNY) pe.money = effect.MNY
         if (effect.SPR) pe.spirit = effect.SPR
-        draft.props = propsEffect(draft.props, pe)
+        draft.props = propsEffect(draft.props, pe, clampNegative)
     })
     // 修仙扩展效果（修为 / 境界 / 大道 / 结局）与旧链映射在这里统一结算，
     // 分支事件通过下面的递归也会各自走一遍。
     const withCultivation = applyCultivationEffects(newState, eventId)
-    const flatState = createFlatState(withCultivation, profile)
+    // 轮回之外：灵魂离体分支优先于统一复活，先让它有机会把人从死亡里带走。
+    const soulBranch =
+        branch?.some(b => b.event === 40062) ?? false
+    const revived = soulBranch
+        ? { state: withCultivation, events: [] as Event['id'][] }
+        : tryRevive(withCultivation)
+    if (revived.events.length) {
+        return {
+            state: revived.state,
+            triggers: [eventId, ...revived.events],
+        }
+    }
+    const flatState = createFlatState(revived.state, profile)
     if (branch) {
         for (const { condition, event } of branch) {
             if (checkCondition(flatState, condition)) {
-                const result = trigger(event, withCultivation, profile)
+                const result = trigger(event, revived.state, profile)
+                const after = tryRevive(result.state)
                 return {
-                    state: result.state,
-                    triggers: [eventId, ...result.triggers],
+                    state: after.state,
+                    triggers: [
+                        eventId,
+                        ...result.triggers,
+                        ...after.events,
+                    ],
                 }
             }
         }
     }
-    return { state: withCultivation, triggers: [eventId] }
+    // 灵魂离体分支没有命中时，仍然要兜底结算一次复活
+    const after = tryRevive(revived.state)
+    if (after.events.length) {
+        return {
+            state: after.state,
+            triggers: [eventId, ...after.events],
+        }
+    }
+    return { state: revived.state, triggers: [eventId] }
 }

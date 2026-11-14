@@ -67,6 +67,81 @@ events.set(11503, {
 })
 
 export const talents = merge<Talent>(baseTalents, cultivationTalents)
+
+// ── 橙色天赋效果覆盖 ────────────────────────────────────────────
+// 基础天赋仍由 xlsx → dist 生成，这里在合并之后统一覆盖，
+// 重新跑 build:data 也不会丢失。
+const talentOverrides: Record<number, Partial<Talent>> = {
+    // 半神：全属性+2 → +8
+    1023: {
+        description: '全属性+8',
+        effect: { MNY: 8, STR: 8, INT: 8, CHR: 8, SPR: 8 },
+    },
+    // 天命：初始可用属性点+8 → +20
+    1064: { description: '初始可用属性点+20', points: 20 },
+    // 阴间大会员：随机属性+8 → 单一随机属性+20~60
+    1141: {
+        description: '单一随机属性+20~60',
+        effect: undefined,
+        randomOne: { min: 20, max: 60 },
+    },
+    // 绝妙的天赋：五维各自随机+2~15，替换原有效果与+1属性点
+    2015: {
+        description: '五维各自随机+2~15',
+        effect: undefined,
+        points: undefined,
+        randomPerStat: { min: 2, max: 15 },
+    },
+    // 橙色胶囊：跳过60~90岁，并额外复活一次
+    1114: {
+        description: '跳过60~90岁，并复活一次',
+        condition: undefined,
+        skipAge: { at: 60, years: 30 },
+        revives: 1,
+        revivePriority: 2,
+        reviveEvent: 20011,
+    },
+    // 轮回之外：保留灵魂离体，并额外复活一次
+    1135: {
+        description: '死后灵魂离体，并可复活一次',
+        revives: 1,
+        revivePriority: 3,
+        reviveEvent: 20012,
+    },
+    // 死者苏生：一条命 → 两条命
+    1147: {
+        description: '加两条命',
+        revives: 2,
+        revivePriority: 4,
+        reviveEvent: 20013,
+    },
+}
+
+for (const [id, patch] of Object.entries(talentOverrides)) {
+    const key = Number(id)
+    talents.set(key, { ...talents.get(key)!, ...patch })
+}
+
+// ── 复活日志事件 ─────────────────────────────────────────────────
+const reviveEvents: [number, string][] = [
+    [20010, '天赋【化神之资】发动，你从必死之局中醒来。'],
+    [20011, '天赋【橙色胶囊】发动，你被从死亡边缘拉了回来。'],
+    [20012, '天赋【轮回之外】发动，你散去的魂魄重新聚拢。'],
+    [20013, '天赋【死者苏生】发动，你被复活了。'],
+]
+for (const [id, event] of reviveEvents) {
+    events.set(id, { id, event, grade: 3, NoRandom: true })
+}
+
+// 死者苏生改由引擎统一结算复活次数，移除旧事件里的单次复活分支，
+// 避免同一次死亡触发两次复活。
+const deathEvent = events.get(10000)
+if (deathEvent?.branch) {
+    events.set(10000, {
+        ...deathEvent,
+        branch: deathEvent.branch.filter(b => !b.condition.includes('1147')),
+    })
+}
 export const achievements = merge<Achievement>(
     baseAchievements,
     cultivationAchievements,

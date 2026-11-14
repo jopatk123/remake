@@ -11,7 +11,11 @@ import { createState, nextProfile, propsEffect } from './state'
 import { summary as stateSummary } from './state'
 import type { ReplacementResult, AdditionalPoints } from './talent'
 import { pull, exclude, replacement, additionalPoints } from './talent'
-import { trigger as ttr } from './talent'
+import {
+    trigger as ttr,
+    tryRevive,
+    isPassiveTalent,
+} from './talent'
 import { trigger as atr } from './achievement'
 import { trigger as etr, check as ec } from './event'
 import {
@@ -94,10 +98,10 @@ export function next(
     let s = produce(state, draft => {
         draft.props = propsEffect(state.props, { age: 1 })
     })
-    const age = s.props.current.age
     const tr = ttr(s, profile, rng)
-    // 年度奇遇：先结算机缘，再结算当年事件，所以当年拿到盒子也能挡住当年的死亡
+    // 橙色胶囊等天赋可能在触发器里直接跳过若干年，年龄要在触发之后再取
     let current = tr.state
+    const age = current.props.current.age
     const encounterEvents: Event['id'][] = []
     const encounterTalents: Talent['id'][] = []
     for (const { event: id, rate, talent, maxAge, minAge } of options
@@ -118,11 +122,16 @@ export function next(
                 draft.talents.add(talent)
                 // 奇遇当场发放的天赋，视为当年已经播报过，
                 // 否则下一年天赋触发时会在日志里再出现一次
-                const { max } = talents.get(talent)!
-                draft.talentTriggers.set(
-                    talent,
-                    Math.max(draft.talentTriggers.get(talent) ?? 0, max),
-                )
+                const meta = talents.get(talent)!
+                // 只有走年度属性结算的天赋才需要标记为已播报；
+                // 入道/突破/复活/跳过年龄等被动天赋不能被提前标记，
+                // 否则引擎钩子会永远不触发。
+                if (!isPassiveTalent(meta)) {
+                    draft.talentTriggers.set(
+                        talent,
+                        Math.max(draft.talentTriggers.get(talent) ?? 0, meta.max),
+                    )
+                }
             })
             encounterTalents.push(talent)
         }
@@ -171,9 +180,15 @@ export function next(
     // ④ 通用死亡判定：本年全部事件（含死亡分支里的复活事件）结算完，
     // 生命仍然 < 1 才判定身死。复活天赋（死者苏生等）因此能正常救人。
     if (!current.ending && current.life < 1) {
-        current = produce(current, draft => {
-            draft.ending = 'death'
-        })
+        const revived = tryRevive(current)
+        if (revived.events.length) {
+            current = revived.state
+            randomEvents.push(...revived.events)
+        } else {
+            current = produce(current, draft => {
+                draft.ending = 'death'
+            })
+        }
     }
 
     const ar = atr(Ao.Trajectory, current, profile)

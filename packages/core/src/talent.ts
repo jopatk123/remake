@@ -1,8 +1,17 @@
-import { type Talent, type TalentGrade, talents } from '@remake/data'
+import {
+    type Event,
+    type Talent,
+    type TalentGrade,
+    talents,
+} from '@remake/data'
 import type { Properties, GameState, ProfileState } from './state'
-import { propsEffect, createFlatState } from './state'
+import {
+    propsEffect,
+    createFlatState,
+    negativeClampEnabled,
+} from './state'
 import { check } from '@remake/condition'
-import { pick, pickWeight, type RNG } from '@remake/vitex'
+import { pick, pickWeight, random, type RNG } from '@remake/vitex'
 import { produce } from 'immer'
 import type { TriggerResult } from './game'
 
@@ -185,6 +194,18 @@ const EffectRandomProperties = [
     'spirit',
 ] as (keyof Properties)[]
 
+/** 只靠引擎钩子生效、不走年度属性结算的天赋 */
+export function isPassiveTalent(talent: Talent): boolean {
+    return !!(
+        talent.entryAll ||
+        talent.breakthroughPercent ||
+        talent.negativeClamp ||
+        talent.immortalUntil != null ||
+        talent.revives ||
+        talent.skipAge
+    )
+}
+
 export function trigger(
     state: GameState,
     profile: ProfileState,
@@ -192,31 +213,141 @@ export function trigger(
 ): TriggerResult<Talent['id']> {
     const flatState = createFlatState(state, profile)
     const triggers: Talent['id'][] = []
+    const skipTalents: Talent['id'][] = []
+
+    // 跳过年龄是独立的引擎钩子，不受普通触发条件影响
     for (const talent of state.talents) {
-        const { condition, max } = talents.get(talent)!
-        if (state.talentTriggers.get(talent) ?? 0 >= max) continue
+        const meta = talents.get(talent)!
+        if (!meta.skipAge) continue
+        if ((state.talentTriggers.get(talent) ?? 0) >= meta.max) continue
+        if (state.props.current.age < meta.skipAge.at) continue
+        // 已经越过整个跳过区间就不再回头，避免高龄获得时反而减龄
+        if (
+            state.props.current.age >=
+            meta.skipAge.at + meta.skipAge.years
+        )
+            continue
+        skipTalents.push(talent)
+        triggers.push(talent)
+    }
+
+    for (const talent of state.talents) {
+        const meta = talents.get(talent)!
+        const { condition, max } = meta
+        if (meta.skipAge) continue
+        if ((state.talentTriggers.get(talent) ?? 0) >= max) continue
+        if (isPassiveTalent(meta) && !meta.effect && !meta.randomPerStat && !meta.randomOne)
+            continue
         if (condition && !check(flatState, condition)) continue
         triggers.push(talent)
     }
     if (triggers.length === 0) return { state, triggers }
+    const clampNegative = negativeClampEnabled(state)
     const newState = produce(state, draft => {
+        for (const talent of skipTalents) {
+            const { skipAge, max } = talents.get(talent)!
+            const times = draft.talentTriggers.get(talent) ?? 0
+            if (times >= max || !skipAge) continue
+            const age = draft.props.current.age
+            const target = skipAge.at + skipAge.years
+            if (age < skipAge.at || age >= target) continue
+            draft.props = propsEffect(
+                draft.props,
+                { age: target - age },
+                clampNegative,
+            )
+            draft.talentTriggers.set(talent, times + 1)
+        }
         for (const talent of triggers) {
+            if (skipTalents.includes(talent)) continue
             const times = draft.talentTriggers.get(talent) ?? 0
             draft.talentTriggers.set(talent, times + 1)
-            const { effect } = talents.get(talent)!
-            if (!effect) continue
+            const { effect, randomPerStat, randomOne } = talents.get(talent)!
             const pe = {} as Partial<Properties>
-            if (effect.CHR) pe.charm = effect.CHR
-            if (effect.INT) pe.intelligence = effect.INT
-            if (effect.STR) pe.strength = effect.STR
-            if (effect.MNY) pe.money = effect.MNY
-            if (effect.SPR) pe.spirit = effect.SPR
-            if (effect.RND) {
-                const key = pick(EffectRandomProperties, rng)!
-                pe[key] = (pe[key] ?? 0) || effect.RND
+            if (effect) {
+                if (effect.CHR) pe.charm = effect.CHR
+                if (effect.INT) pe.intelligence = effect.INT
+                if (effect.STR) pe.strength = effect.STR
+                if (effect.MNY) pe.money = effect.MNY
+                if (effect.SPR) pe.spirit = effect.SPR
+                if (effect.RND) {
+                    const key = pick(EffectRandomProperties, rng)!
+                    pe[key] = (pe[key] ?? 0) || effect.RND
+                }
             }
-            draft.props = propsEffect(draft.props, pe)
+            if (randomPerStat) {
+                for (const key of EffectRandomProperties) {
+                    pe[key] =
+                        (pe[key] ?? 0) +
+                        random(randomPerStat.max, randomPerStat.min, rng)
+                }
+            }
+            if (randomOne) {
+                const key = pick(EffectRandomProperties, rng)!
+                pe[key] =
+                    (pe[key] ?? 0) +
+                    random(randomOne.max, randomOne.min, rng)
+            }
+            if (Object.keys(pe).length === 0) continue
+            draft.props = propsEffect(draft.props, pe, clampNegative)
         }
     })
     return { state: newState, triggers }
+}
+
+/** 死亡复活结果：state 已恢复到活着的状态，events 用于日志播报 */
+export interface ReviveResult {
+    state: GameState
+    events: Event['id'][]
+}
+
+/**
+ * 统一死亡复活结算。
+ * 顺序固定：化神之资 → 橙色胶囊 → 轮回之外 → 死者苏生。
+ */
+export function tryRevive(state: GameState): ReviveResult {
+    // 只处理真正的死亡：飞升 / 超脱 / 离世 / 转世都不能被复活打断
+    const isDeath =
+        state.ending === 'death' ||
+        (state.ending === null && state.life < 1)
+    if (!isDeath) return { state, events: [] }
+    const age = state.props.current.age
+    const candidates = [...state.talents]
+        .map(id => talents.get(id)!)
+        .filter(t => t.revives || t.immortalUntil != null)
+        .sort(
+            (a, b) => (a.revivePriority ?? 99) - (b.revivePriority ?? 99),
+        )
+    for (const talent of candidates) {
+        if (talent.immortalUntil != null) {
+            if (age >= talent.immortalUntil) continue
+        } else {
+            const used = state.reviveUsed.get(talent.id) ?? 0
+            if (used >= (talent.revives ?? 0)) continue
+        }
+        return {
+            state: produce(state, draft => {
+                draft.life = 1
+                if (draft.ending === 'death') draft.ending = null
+                if (talent.immortalUntil == null) {
+                    draft.reviveUsed.set(
+                        talent.id,
+                        (draft.reviveUsed.get(talent.id) ?? 0) + 1,
+                    )
+                }
+                if (talent.reviveEvent != null) {
+                    draft.events.add(talent.reviveEvent)
+                    const history =
+                        draft.eventHistory.get(talent.reviveEvent) ?? []
+                    draft.eventHistory.set(talent.reviveEvent, [
+                        ...history,
+                        age,
+                    ])
+                }
+            }),
+            events:
+                talent.reviveEvent != null ? [talent.reviveEvent] : [],
+        }
+    }
+    return { state, events: [] }
 }

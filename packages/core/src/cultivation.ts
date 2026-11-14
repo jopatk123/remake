@@ -15,6 +15,7 @@ import {
     breakRate,
     realmConfig,
     snapshot,
+    talents as talentData,
     ENTRY_EVENT_IDS,
     MINOR_BROADCAST_VARIANTS,
     BREAKTHROUGH_SUCCESS_IDS,
@@ -50,8 +51,13 @@ import {
     type Event,
 } from '@remake/data'
 import type { EventEffect } from '@remake/data'
-import type { GameState, ProfileState } from './state'
-import { createFlatState } from './state'
+import type { GameState, ProfileState, Properties } from './state'
+import {
+    createFlatState,
+    propsEffect,
+    negativeClampEnabled,
+    PROPERTY_KEYS,
+} from './state'
 import { produce } from 'immer'
 import { pick, random, type RNG } from '@remake/vitex'
 
@@ -61,6 +67,48 @@ type Meta = Event & CultivationEventMeta
 
 function addDao(target: { daos: string[] }, name: string) {
     if (!target.daos.includes(name)) target.daos.push(name)
+}
+
+/** 突破到指定大境界时，按百分比提升全属性（每个天赋只结算一次） */
+function applyBreakthroughGrowth(draft: GameState, previousRealm: number) {
+    if (draft.cultivation.realm <= previousRealm) return
+    const clamp = negativeClampEnabled(draft)
+    for (const id of draft.talents) {
+        const bonus = talentData.get(id)?.breakthroughPercent
+        if (!bonus) continue
+        if (draft.cultivation.realm < bonus.realm) continue
+        if ((draft.talentTriggers.get(id) ?? 0) > 0) continue
+        const delta = {} as Partial<Properties>
+        for (const key of PROPERTY_KEYS) {
+            const value = draft.props.current[key]
+            delta[key] = Math.floor(value * (bonus.percent / 100))
+        }
+        draft.props = propsEffect(draft.props, delta, clamp)
+        draft.talentTriggers.set(id, 1)
+    }
+}
+
+/** 入道：太古遗脉全属性+30，随后执行脱胎换骨（五维低于10拉到10） */
+function applyEntryGrowth(draft: GameState) {
+    const clamp = negativeClampEnabled(draft)
+    const entry = {} as Partial<Properties>
+    for (const id of draft.talents) {
+        const bonus = talentData.get(id)?.entryAll
+        if (!bonus) continue
+        if (bonus.path != null && draft.cultivation.path !== bonus.path) continue
+        for (const key of PROPERTY_KEYS)
+            entry[key] = (entry[key] ?? 0) + bonus.value
+    }
+    if (Object.keys(entry).length)
+        draft.props = propsEffect(draft.props, entry, clamp)
+
+    const floor = {} as Partial<Properties>
+    for (const key of PROPERTY_KEYS) {
+        const value = draft.props.current[key]
+        if (value < 10) floor[key] = 10 - value
+    }
+    if (Object.keys(floor).length)
+        draft.props = propsEffect(draft.props, floor, clamp)
 }
 
 /**
@@ -108,6 +156,8 @@ export function applyCultivationEffects(
     return produce(state, draft => {
         const d = draft.cultivation
         const age = draft.props.current.age
+        const wasStarted = d.started
+        const previousRealm = d.realm
 
         // 入道硬门槛：凡人生阶段不允许出现炼气读条。
         // 年度奇遇已经用 minAge 限制了传承洞府，这里再兜一层，
@@ -119,6 +169,9 @@ export function applyCultivationEffects(
         }
         if (legacyPath !== undefined) d.path = legacyPath
         if (effect?.PATH !== undefined) d.path = effect.PATH
+
+        // 入道瞬间：太古遗脉 +30，并执行脱胎换骨
+        if (!wasStarted && d.started) applyEntryGrowth(draft)
 
         if (effect?.CULT) d.progress = Math.max(0, d.progress + effect.CULT)
         if (effect?.REALM) {
@@ -167,6 +220,7 @@ export function applyCultivationEffects(
         // 普通死亡（LIF 减到 0）的结局标记推迟到 game.ts 年度结算末尾——
         // 死亡分支里的复活事件（死者苏生 / 恶魔交易等）会先结算，
         // 把生命抬回 1，人就被救回来了。
+        applyBreakthroughGrowth(draft, previousRealm)
     })
 }
 
@@ -358,11 +412,14 @@ export function advanceCultivation(
                     draft.rateBonus,
             )
             if (random(1000, 0, rng) < rate * 1000) {
+                const previousRealm = d.realm
                 d.realm += 1
                 d.minor = 0
                 d.progress = 0
                 d.bottleneck = false
                 d.breakthroughs += 1
+                // 身魂合一 / 万法归一 / 雷劫不侵：突破瞬间全属性+20%
+                applyBreakthroughGrowth(draft, previousRealm)
                 // 进入渡劫期时记下当前准备度，九劫从零开始逐重扛
                 if (d.realm === TRIAL_REALM) {
                     d.tribulationBaseline = d.tribulation

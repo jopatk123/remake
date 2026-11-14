@@ -64,6 +64,26 @@ export type Talent = {
     readonly group?: string
     /** 天赋盲盒 */
     readonly replacement?: TalentReplacement
+    /** 入道时全属性加成（一次性）；path 用于限定修行路线 */
+    readonly entryAll?: { value: number; path?: number }
+    /** 突破到指定大境界时，全属性提升百分比（一次性） */
+    readonly breakthroughPercent?: { realm: number; percent: number }
+    /** 五维各自独立随机加成 */
+    readonly randomPerStat?: { min: number; max: number }
+    /** 单一随机属性加成 */
+    readonly randomOne?: { min: number; max: number }
+    /** 额外复活次数 */
+    readonly revives?: number
+    /** 复活优先级，数字越小越先消耗 */
+    readonly revivePriority?: number
+    /** 复活时写入日志的事件 id */
+    readonly reviveEvent?: number
+    /** 低于该年龄时无限复活 */
+    readonly immortalUntil?: number
+    /** 属性为负时强制钳制到 1 */
+    readonly negativeClamp?: boolean
+    /** 到指定年龄时跳过若干年 */
+    readonly skipAge?: { at: number; years: number }
     /** 天赋触发上限 */
     readonly max: number
 }

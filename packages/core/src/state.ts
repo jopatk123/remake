@@ -1,6 +1,7 @@
 import type { Achievement, Event, Talent } from '@remake/data'
 import {
     CultivationPath,
+    talents as talentData,
     type CultivationState,
     type EndingType,
 } from '@remake/data'
@@ -36,6 +37,8 @@ export function createHLProperties(allocation: Allocation) {
 export interface GameState {
     props: HLProperties // 本局属性
     life: number // 本局生命值
+    /** 已消耗的复活次数：天赋 id → 次数 */
+    reviveUsed: Map<Talent['id'], number>
     talents: Set<Talent['id']> // 本局拥有的天赋
     events: Set<Event['id']> // 本局触发过的事件
     achievements: Set<Achievement['id']> // 本局达成的成就
@@ -85,10 +88,19 @@ export function createState(
     allocation: Allocation,
     talents?: Iterable<Talent['id']>,
 ): GameState {
+    const owned = new Set(talents)
+    // 化神之资从开局就生效：初始分配出的负属性同样强行拉到 1
+    if ([...owned].some(id => talentData.get(id)?.negativeClamp)) {
+        allocation = { ...allocation }
+        for (const key of PROPERTY_KEYS) {
+            if (allocation[key] < 0) allocation[key] = 1
+        }
+    }
     return {
         props: createHLProperties(allocation),
         life: 1,
-        talents: new Set(talents),
+        reviveUsed: new Map(),
+        talents: owned,
         events: new Set(),
         achievements: new Set(),
         talentTriggers: new Map(),
@@ -263,12 +275,35 @@ export function createFlatState(game: GameState, profile: ProfileState) {
     return new Proxy({ game, profile }, flatStateHandle) as unknown as FlatState
 }
 
-export function propsEffect(hlp: HLProperties, effect: Partial<Properties>) {
+/** 五维属性键（不含年龄） */
+export const PROPERTY_KEYS = [
+    'money',
+    'strength',
+    'intelligence',
+    'charm',
+    'spirit',
+] as const
+
+/** 是否拥有「负属性强行钳制到 1」的天赋 */
+export function negativeClampEnabled(state: GameState): boolean {
+    for (const id of state.talents) {
+        if (talentData.get(id)?.negativeClamp) return true
+    }
+    return false
+}
+
+export function propsEffect(
+    hlp: HLProperties,
+    effect: Partial<Properties>,
+    clampNegative = false,
+) {
     return produce(hlp, draft => {
         for (const key in effect) {
             const prop = key as keyof Properties
             const value = effect[prop]!
             draft.current[prop] += value
+            if (clampNegative && prop !== 'age' && draft.current[prop] < 0)
+                draft.current[prop] = 1
             draft.highest[prop] = Math.max(
                 draft.highest[prop],
                 draft.current[prop],
