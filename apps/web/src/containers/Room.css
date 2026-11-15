@@ -1,4 +1,6 @@
 .screen.room {
+    /* 八个席位并排两行 + 右侧边栏，默认 48rem 太挤 */
+    max-width: min(100%, 60rem);
     gap: 1.25rem;
     /* 有人连发几条弹幕会把卡片顶高，窗口矮的时候要能滚，别把顶部裁掉 */
     max-height: calc(100dvh - 2rem);
@@ -191,316 +193,468 @@
 
     .room-form > .room-actions > button { flex: 1 1 9rem; }
 
-    /* ---------- 候场大厅 ---------- */
+    /* ---------- 候场：横幅 ---------- */
+
+    .room-banner {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 0 0.25rem 1rem;
+        box-sizing: border-box;
+        border-bottom: 0.0625rem solid var(--border-subtle);
+        animation: room-head-in 0.42s var(--ease-out) both;
+
+        &::after {
+            content: '';
+            position: absolute;
+            left: 0.25rem;
+            bottom: -0.0625rem;
+            width: 4.5rem;
+            height: 0.125rem;
+            background: var(--color-primary);
+        }
+    }
+
+    .room-banner-title {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-width: 0;
+
+        .room-title { font-size: clamp(1.9rem, 3.8vw, 2.5rem); line-height: 1.15; }
+    }
+
+    .room-banner-tools {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.6rem;
+        flex-shrink: 0;
+    }
+
+    button.room-ticket {
+        --style-color: var(--color-primary);
+        --hover-background: color-mix(in srgb, var(--color-primary) 7%, var(--surface-raised));
+        --hover-color: var(--color-primary);
+        height: auto;
+        padding: 0;
+        gap: 0;
+        align-items: stretch;
+        overflow: hidden;
+        color: var(--color-primary);
+        border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-subtle));
+        border-radius: 0.55rem;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 7%, transparent), transparent 60%),
+            var(--surface-raised);
+        box-shadow: 0 0.3rem 1rem color-mix(in srgb, var(--color-primary) 10%, transparent);
+
+        .room-ticket-code {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.05rem;
+            padding: 0.4rem 0.95rem 0.45rem;
+
+            small {
+                color: var(--text-muted);
+                font-size: 0.58rem;
+                font-weight: normal;
+                letter-spacing: 0.2em;
+            }
+
+            strong {
+                font-size: 1.35rem;
+                line-height: 1.2;
+                letter-spacing: 0.24em;
+            }
+        }
+
+        .room-ticket-action {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0 0.95rem;
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            border-left: 0.0625rem dashed color-mix(in srgb, var(--color-primary) 45%, transparent);
+            background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+            transition: background-color var(--duration-fast) ease;
+        }
+
+        @media (hover: hover) {
+            &:hover .room-ticket-action {
+                color: var(--on-primary);
+                background: var(--color-primary);
+            }
+        }
+    }
 
     .room-result {
         width: 100%;
         animation: room-card-in 0.4s var(--ease-out) both;
     }
 
-    .room-lobby {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        width: 100%;
-        padding: 1rem;
+    /* ---------- 候场：席位 + 边栏 ---------- */
+
+    .room-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 17.5rem;
+        gap: 0.85rem;
+        align-items: stretch;
+    }
+
+    .room-seats,
+    .room-chat,
+    .room-rules {
         box-sizing: border-box;
         border: 0.0625rem solid var(--border-subtle);
         border-radius: var(--radius-card);
-        background:
-            linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent 32%),
-            color-mix(in srgb, var(--surface-background) 88%, transparent);
+        background: color-mix(in srgb, var(--surface-background) 88%, transparent);
         box-shadow: var(--shadow-card);
         animation: room-card-in 0.45s var(--ease-out) both;
     }
 
-    .room-lobby-head {
+    .room-seats {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        padding: 1rem 1.1rem;
+        background:
+            linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent 28%),
+            color-mix(in srgb, var(--surface-background) 90%, transparent);
+    }
+
+    .room-seats-head {
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 0 0.15rem 0.15rem;
-        border-bottom: 0.0625rem solid var(--border-subtle);
 
         > div {
             display: flex;
             flex-direction: column;
-            gap: 0.15rem;
+            gap: 0.1rem;
         }
 
-        .room-lobby-kicker {
+        .room-seats-kicker {
             color: var(--text-muted);
             font-size: 0.62rem;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.22em;
         }
 
         strong {
-            font-family: var(--font-display);
-            font-size: 1.25rem;
-            letter-spacing: 0.08em;
+            font-size: 1.5rem;
+            line-height: 1.2;
+
+            small {
+                margin-left: 0.15rem;
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                font-weight: normal;
+                letter-spacing: 0.06em;
+            }
         }
     }
 
-    .room-lobby-tools {
+    .room-state {
         display: inline-flex;
-        flex-direction: row;
         align-items: center;
         gap: 0.4rem;
-        flex-shrink: 0;
-    }
-
-    .room-lobby-state {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.22rem 0.55rem;
+        padding: 0.25rem 0.65rem;
         color: var(--text-muted);
         border: 0.0625rem solid var(--border-subtle);
         border-radius: 999px;
         background: var(--surface-muted);
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         white-space: nowrap;
 
         &::before {
             content: '';
-            width: 0.38rem;
-            height: 0.38rem;
+            width: 0.4rem;
+            height: 0.4rem;
             border-radius: 50%;
             background: currentColor;
-            opacity: 0.65;
+            opacity: 0.6;
         }
 
         &.ready {
             color: var(--color-primary);
             border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-subtle));
-            background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-muted));
-            &::before { box-shadow: 0 0 0.4rem color-mix(in srgb, var(--color-primary) 50%, transparent); opacity: 1; }
+            background: color-mix(in srgb, var(--color-primary) 9%, var(--surface-muted));
+
+            &::before {
+                opacity: 1;
+                animation: room-breathe 1.8s ease-in-out infinite;
+            }
         }
     }
 
-    .room-players {
-        list-style: none;
-        margin: 0;
-        padding: 0;
+    .room-seat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+
+    .room-seat {
+        position: relative;
         display: flex;
         flex-direction: column;
-        gap: 0.4rem;
-
-        li {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 0.6rem;
-            min-height: 3.25rem;
-            padding: 0.45rem 0.7rem;
-            border: 0.0625rem solid var(--border-subtle);
-            border-left: 0.18rem solid var(--player-color);
-            border-radius: var(--radius-small);
-            background:
-                linear-gradient(90deg, color-mix(in srgb, var(--player-color) 7%, transparent), transparent 30%),
-                var(--surface-raised);
-            box-shadow: 0 0.15rem 0.5rem color-mix(in srgb, var(--player-color) 5%, transparent);
-            box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+        min-width: 0;
+        min-height: 8.25rem;
+        padding: 1.15rem 0.6rem 0.8rem;
+        box-sizing: border-box;
+        border: 0.0625rem solid var(--border-subtle);
+        border-top: 0.2rem solid var(--player-color);
+        border-radius: calc(var(--radius-small) * 1.2);
+        background:
+            linear-gradient(180deg, color-mix(in srgb, var(--player-color) 10%, transparent), transparent 60%),
+            var(--surface-raised);
+        box-shadow: 0 0.25rem 0.8rem color-mix(in srgb, var(--player-color) 7%, transparent);
+        /* 空席位不参与入场动画，否则最后一帧的 opacity: 1 会盖掉下面的淡化 */
+        &:not(.empty) {
             animation: room-player-in 0.35s var(--ease-out) both;
-            animation-delay: calc(var(--player-order, 0) * 45ms);
+            animation-delay: calc(var(--player-order, 0) * 40ms);
+        }
 
-            &.me {
-                border-color: color-mix(in srgb, var(--color-primary) 62%, var(--border-subtle));
-                border-left-color: var(--player-color);
-                box-shadow: 0 0.3rem 1rem color-mix(in srgb, var(--color-primary) 12%, transparent);
-            }
+        &.me {
+            border-color: color-mix(in srgb, var(--player-color) 55%, var(--border-subtle));
+            border-top-color: var(--player-color);
+            background:
+                linear-gradient(180deg, color-mix(in srgb, var(--player-color) 16%, transparent), transparent 70%),
+                var(--surface-raised);
+            box-shadow:
+                0 0 0 0.125rem color-mix(in srgb, var(--player-color) 18%, transparent),
+                0 0.4rem 1.1rem color-mix(in srgb, var(--player-color) 14%, transparent);
+        }
 
-            .seat-index {
-                flex: none;
-                width: 1.4rem;
-                color: var(--text-muted);
-                font-size: 0.65rem;
-                opacity: 0.65;
-            }
+        .seat-no {
+            position: absolute;
+            top: 0.45rem;
+            left: 0.55rem;
+            color: var(--text-muted);
+            font-size: 0.62rem;
+            opacity: 0.7;
+        }
 
-            .player-avatar {
-                flex: none;
-                display: grid;
-                place-items: center;
-                width: 2rem;
-                height: 2rem;
-                color: var(--base-background-color);
+        .seat-seal {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.45rem;
+            display: grid;
+            place-items: center;
+            width: 1.35rem;
+            height: 1.35rem;
+            color: var(--color-seal);
+            border: 0.09rem solid currentColor;
+            border-radius: 0.2rem;
+            background: color-mix(in srgb, var(--color-seal) 8%, transparent);
+            font-size: 0.72rem;
+            letter-spacing: 0;
+            transform: rotate(-8deg);
+        }
+
+        .player-avatar {
+            display: grid;
+            place-items: center;
+            width: 2.9rem;
+            height: 2.9rem;
+            margin-bottom: 0.2rem;
+            color: var(--base-background-color);
+            border-radius: 50%;
+            background: var(--player-color);
+            font-size: 1.25rem;
+            letter-spacing: 0;
+            box-shadow:
+                0 0 0 0.25rem color-mix(in srgb, var(--player-color) 14%, transparent),
+                0 0.3rem 0.7rem color-mix(in srgb, var(--player-color) 25%, transparent);
+            user-select: none;
+        }
+
+        .seat-name {
+            max-width: 100%;
+            overflow: hidden;
+            font-weight: 700;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .seat-state {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+
+            &::before {
+                content: '';
+                width: 0.34rem;
+                height: 0.34rem;
                 border-radius: 50%;
                 background: var(--player-color);
-                font-size: 0.9rem;
-                font-weight: 800;
-                box-shadow: 0 0.15rem 0.5rem color-mix(in srgb, var(--player-color) 22%, transparent);
-                user-select: none;
-            }
-
-            .name {
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                flex: 1 1 auto;
-                gap: 0.45rem;
-                min-width: 0;
-                font-weight: bold;
-                overflow: hidden;
-                white-space: nowrap;
-                text-overflow: ellipsis;
-            }
-
-            .tag {
-                flex: none;
-                padding: 0.05rem 0.25rem;
-                color: var(--player-color);
-                border: 0.0625rem solid currentColor;
-                border-radius: 0.15rem;
-                font-size: 0.62rem;
-                font-weight: normal;
-                opacity: 0.85;
-            }
-
-            .state {
-                display: inline-flex;
-                align-items: center;
-                flex: none;
-                gap: 0.35rem;
-                font-size: 0.8rem;
-                color: var(--text-muted);
-
-                &::before {
-                    content: '';
-                    width: 0.38rem;
-                    height: 0.38rem;
-                    border-radius: 50%;
-                    background: var(--player-color);
-                    box-shadow: 0 0 0.45rem color-mix(in srgb, var(--player-color) 45%, transparent);
-                }
-            }
-        }
-    }
-
-    .room-lobby > .room-actions {
-        justify-content: flex-end;
-        padding-top: 0.15rem;
-
-        > button { flex: 0 1 auto; min-width: 7rem; }
-        > button.primary { min-width: 9rem; }
-    }
-
-    .room-status {
-        margin: 0;
-        color: var(--text-muted);
-        font-size: 0.82rem;
-        line-height: 1.6;
-        text-align: center;
-    }
-
-    /* ---------- 规则 + 闲聊 ---------- */
-
-    .room-bottom {
-        display: grid;
-        grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-        gap: 0.75rem;
-        width: 100%;
-        align-items: start;
-    }
-
-    .room-rules,
-    .room-chat {
-        border: 0.0625rem solid var(--border-subtle);
-        border-radius: var(--radius-card);
-        background: color-mix(in srgb, var(--surface-background) 80%, transparent);
-        box-shadow: var(--shadow-card);
-        box-sizing: border-box;
-    }
-
-    .room-rules {
-        padding: 0.75rem 0.85rem;
-
-        summary {
-            display: flex;
-            flex-direction: column;
-            gap: 0.18rem;
-            cursor: pointer;
-            user-select: none;
-            list-style: none;
-
-            &::-webkit-details-marker { display: none; }
-
-            span {
-                color: var(--base-text-color);
-                font-family: var(--font-display);
-                font-size: 0.95rem;
-                font-weight: 700;
-                letter-spacing: 0.1em;
-            }
-
-            small {
-                color: var(--text-muted);
-                font-size: 0.68rem;
-                letter-spacing: 0.03em;
             }
         }
 
-        &[open] summary {
-            padding-bottom: 0.55rem;
-            margin-bottom: 0.55rem;
-            border-bottom: 0.0625rem solid var(--border-subtle);
-        }
+        &.me .seat-state { color: var(--player-color); font-weight: 600; }
 
-        .room-rules-body {
+        &.empty {
             color: var(--text-muted);
-            font-size: 0.78rem;
-            line-height: 1.75;
+            font-size: 0.74rem;
+            border: 0.0625rem dashed color-mix(in srgb, var(--base-text-color) 18%, transparent);
+            background:
+                repeating-linear-gradient(135deg, transparent 0 0.5rem, color-mix(in srgb, var(--base-text-color) 2.5%, transparent) 0.5rem 0.5625rem);
+            box-shadow: none;
+            opacity: 0.85;
+        }
 
-            p {
-                margin: 0;
-                & + p { margin-top: 0.5rem; }
+        .seat-hole {
+            display: grid;
+            place-items: center;
+            width: 2.9rem;
+            height: 2.9rem;
+            margin-bottom: 0.2rem;
+            border: 0.0625rem dashed currentColor;
+            border-radius: 50%;
+            font-size: 1rem;
+            opacity: 0.55;
+        }
+    }
+
+    button.seat-invite {
+        --style-color: var(--color-primary);
+        --hover-background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+        --hover-color: var(--color-primary);
+        position: absolute;
+        inset: 0;
+        flex-direction: column;
+        gap: 0.3rem;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        color: var(--color-primary);
+        border: none;
+        border-radius: inherit;
+        background: transparent;
+        box-shadow: none;
+        font-size: 0.74rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+
+        .seat-hole { font-size: 1.35rem; font-weight: 400; opacity: 0.8; }
+
+        @media (hover: hover) {
+            &:hover:not(:disabled) {
+                box-shadow: none;
+                transform: none;
+                .seat-hole { opacity: 1; border-style: solid; }
             }
+        }
+    }
+
+    .room-seat.empty:has(.seat-invite) {
+        border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+        opacity: 1;
+    }
+
+    .room-seats-foot {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-top: 0.85rem;
+        border-top: 0.0625rem solid var(--border-subtle);
+
+        .room-status { text-align: left; }
+
+        .room-actions {
+            flex-wrap: nowrap;
+            flex-shrink: 0;
+
+            > button {
+                min-width: 6.5rem;
+                height: calc(2.45rem * var(--ratio));
+                font-size: calc(1rem * var(--ratio-font));
+                letter-spacing: 0.08em;
+            }
+
+            > button.primary { min-width: 8.5rem; }
+        }
+    }
+
+    .room-seats > .room-error { margin-top: -0.4rem; text-align: right; }
+
+    .room-side {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        min-width: 0;
+    }
+
+    .room-side-head {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem;
+
+        span {
+            font-size: 0.98rem;
+            letter-spacing: 0.12em;
+        }
+
+        small {
+            color: var(--text-muted);
+            font-size: 0.66rem;
         }
     }
 
     .room-chat {
         display: flex;
         flex-direction: column;
-        gap: 0.45rem;
-        padding: 0.75rem 0.85rem;
+        gap: 0.55rem;
+        flex: 1 1 auto;
+        padding: 0.85rem 0.9rem 0.9rem;
+        animation-delay: 60ms;
 
-        .room-chat-head {
-            display: flex;
-            flex-direction: row;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 0.5rem;
-
-            span {
-                font-size: 0.95rem;
-                letter-spacing: 0.1em;
-            }
-
-            small {
-                color: var(--text-muted);
-                font-size: 0.65rem;
-                text-align: right;
-            }
+        .danmaku {
+            flex: 1 1 auto;
+            height: auto;
+            min-height: calc(3 * (var(--row) + var(--gap)) + 0.8rem);
+            padding: 0.4rem;
+            box-sizing: border-box;
+            border-radius: var(--radius-small);
+            background: color-mix(in srgb, var(--surface-muted) 55%, transparent);
         }
 
         .danmaku:empty {
-            height: auto;
-            min-height: 2.1rem;
             justify-content: center;
             align-items: center;
 
             &::before {
                 content: '还没有人开口，先发一条试试。';
                 color: var(--text-muted);
-                font-size: 0.76rem;
-                opacity: 0.7;
+                font-size: 0.74rem;
+                opacity: 0.75;
             }
         }
 
+        .danmaku-item {
+            font-size: 0.8rem;
+            background: var(--surface-raised);
+        }
+
         .danmaku-input input {
-            height: calc(2.25rem * var(--ratio));
+            height: calc(2.2rem * var(--ratio));
+            font-size: 0.85rem;
             background: var(--surface-raised);
             border-color: var(--border-subtle);
             border-radius: var(--radius-small);
@@ -512,8 +666,56 @@
         }
 
         .danmaku-input > button {
-            height: calc(2.25rem * var(--ratio));
-            font-size: 0.85rem;
+            height: calc(2.2rem * var(--ratio));
+            font-size: 0.82rem;
+        }
+    }
+
+    .room-rules {
+        padding: 0.85rem 0.9rem 0.95rem;
+        animation-delay: 120ms;
+
+        ol {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            margin: 0.6rem 0 0;
+            padding: 0;
+            list-style: none;
+            counter-reset: rule;
+        }
+
+        li {
+            display: grid;
+            grid-template-columns: 1.25rem minmax(0, 1fr);
+            column-gap: 0.5rem;
+            counter-increment: rule;
+
+            &::before {
+                content: counter(rule);
+                grid-row: span 2;
+                display: grid;
+                place-items: center;
+                width: 1.25rem;
+                height: 1.25rem;
+                margin-top: 0.05rem;
+                color: var(--color-accent);
+                border: 0.0625rem solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+                border-radius: 50%;
+                font-family: var(--font-mono);
+                font-size: 0.62rem;
+            }
+
+            strong {
+                font-size: 0.8rem;
+                letter-spacing: 0.06em;
+            }
+
+            span {
+                color: var(--text-muted);
+                font-size: 0.72rem;
+                line-height: 1.6;
+            }
         }
     }
 
@@ -564,6 +766,14 @@
         button { min-width: 9rem; }
     }
 
+    .room-status {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.82rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
     .room-error {
         font-size: 0.82rem;
         color: var(--color-error);
@@ -572,6 +782,15 @@
     }
 
     .room-status + .room-error { margin-top: -0.35rem; }
+
+    @media (max-width: 56rem) {
+        .room-main { grid-template-columns: minmax(0, 1fr); }
+        .room-side {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: stretch;
+        }
+    }
 
     @media (max-width: 40rem) {
         gap: 0.9rem;
@@ -582,18 +801,22 @@
         .room-form { padding: 1.25rem 1rem; }
         .room-fields { grid-template-columns: minmax(0, 1fr); }
         .room-form > .room-actions > button { flex: 1 1 7rem; }
-        .room-lobby { padding: 0.75rem; }
-        .room-lobby-head strong { font-size: 1.1rem; }
-        .room-lobby-state { font-size: 0.66rem; padding: 0.18rem 0.4rem; }
-        .room-players li { gap: 0.4rem; padding: 0.4rem 0.5rem; }
-        .room-players li .seat-index { display: none; }
-        .room-players li .state { font-size: 0.72rem; }
-        .room-bottom { grid-template-columns: minmax(0, 1fr); }
-        .room-lobby > .room-actions {
-            justify-content: stretch;
-            > button { flex: 1 1 7rem; }
+
+        .room-banner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.85rem;
         }
-        .room-chat .room-chat-head small { display: none; }
+        .room-seats { padding: 0.8rem; }
+        .room-seat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .room-seat { min-height: 7rem; }
+        .room-seats-foot {
+            flex-direction: column;
+            align-items: stretch;
+            .room-status { text-align: center; }
+            .room-actions > button { flex: 1 1 0; min-width: 0; }
+        }
+        .room-side { grid-template-columns: minmax(0, 1fr); }
     }
 }
 
@@ -609,6 +832,11 @@
 @keyframes room-card-in {
     from { opacity: 0; transform: translateY(0.5rem) scale(0.99); }
     to { opacity: 1; transform: none; }
+}
+
+@keyframes room-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); }
+    50% { box-shadow: 0 0 0 0.25rem color-mix(in srgb, currentColor 0%, transparent); }
 }
 
 @keyframes room-player-in {

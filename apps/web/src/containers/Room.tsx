@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Mode, Step, useGameReset, useModeChoose, useSetStep } from '@remake/hooks'
-import { RESULT_MS } from '@remake/multi'
+import { MAX_PLAYERS, RESULT_MS } from '@remake/multi'
 import { useMulti } from '@/multi/useMulti'
 import { connect, disconnect, start } from '@/multi/client'
 import { copyText } from '@/multi/clipboard'
@@ -142,6 +142,8 @@ export function Room() {
     const result = mp.room?.result ?? null
     /** 标题和分享链接都跟着真实房间走，不用本地那份可能过期的输入 */
     const shownCode = mp.room?.id ?? code
+    const ready = players.length > 1
+    const emptySeats = Math.max(0, MAX_PLAYERS - players.length)
 
     if (!desktop && !joined) {
         return (
@@ -164,7 +166,7 @@ export function Room() {
 
     return (
         <div className="screen room">
-            <RoomHeading code={shownCode} />
+            {!joined && <RoomHeading code={shownCode} />}
 
             {!joined && (
                 <div className="room-form">
@@ -219,6 +221,32 @@ export function Room() {
 
             {joined && (
                 <>
+                    <header className="room-banner">
+                        <div className="room-banner-title">
+                            <span className="room-kicker font-mono">
+                                TOGETHER IN ONE LIFE · 同场轮回
+                            </span>
+                            <h2 className="room-title font-display">多人游戏</h2>
+                            <p className="room-sub">
+                                同一间命室，各自落笔。谁走得更远，一屏见分晓。
+                            </p>
+                        </div>
+                        <div className="room-banner-tools">
+                            <button
+                                className="room-ticket"
+                                onClick={copyLink}
+                                title="复制邀请链接"
+                            >
+                                <span className="room-ticket-code">
+                                    <small>房号</small>
+                                    <strong className="font-mono">{shownCode}</strong>
+                                </span>
+                                <span className="room-ticket-action">复制邀请</span>
+                            </button>
+                            <AudioToggle />
+                        </div>
+                    </header>
+
                     {result && (
                         <div className="room-result">
                             <Ranking
@@ -229,103 +257,134 @@ export function Room() {
                             />
                         </div>
                     )}
-                    <section className="room-lobby">
-                        <div className="room-lobby-head">
-                            <div>
-                                <span className="room-lobby-kicker font-mono">候场名录</span>
-                                <strong>
-                                    {players.length} 人在席
-                                </strong>
-                            </div>
-                            <div className="room-lobby-tools">
-                                <span className={`room-lobby-state ${players.length > 1 ? 'ready' : ''}`}>
-                                    {players.length > 1 ? '可以开局' : '等第二位入席'}
-                                </span>
-                                <AudioToggle />
-                            </div>
-                        </div>
-                        <ul className="room-players">
-                            {players.map((player, index) => (
-                                <li
-                                    key={player.id}
-                                    className={`player-tone-${index % 5} ${player.id === mp.id ? 'me' : ''}`}
-                                    style={{ ['--player-order' as string]: index }}
-                                >
-                                    <span className="seat-index font-mono">
-                                        {String(index + 1).padStart(2, '0')}
-                                    </span>
-                                    <span className="player-avatar font-display" aria-hidden="true">
-                                        {player.name.trim().slice(0, 1) || '命'}
-                                    </span>
-                                    <span className="name">
-                                        {player.name}
-                                        {player.host && (
-                                            <span className="tag font-mono">
-                                                房主
-                                            </span>
-                                        )}
-                                        {player.id === mp.id && (
-                                            <span className="tag font-mono">
-                                                我
-                                            </span>
-                                        )}
-                                    </span>
-                                    <span className="state">
-                                        {player.host ? '执笔候场' : '已入席'}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                        <div className="room-actions">
-                            {host && (
-                                <button className="primary" onClick={start}>
-                                    开始对局
-                                </button>
-                            )}
-                            <button className="secondary" onClick={copyLink}>
-                                复制邀请链接
-                            </button>
-                            <button className="secondary" onClick={handleLeave}>
-                                离开
-                            </button>
-                        </div>
-                        <p className="room-status">
-                            {host
-                                ? players.length > 1
-                                    ? '人已到齐，随时可以开局。'
-                                    : '先把邀请链接发给朋友，等第二位入席。'
-                                : '等房主落笔开局，先把链接发给朋友也行。'}
-                        </p>
-                        {mp.message && <p className="room-error">{mp.message}</p>}
-                    </section>
 
-                    <div className="room-bottom">
-                        <details className="room-rules">
-                            <summary>
-                                <span>对局规则</span>
-                                <small>自动推进 · 随时暂停 · 可调速度</small>
-                            </summary>
-                            <div className="room-rules-body">
-                                <p>
-                                    开局后先等所有人选完天赋、分配好点数进入对战页，
-                                    到齐才自动往前走；谁都可以暂停、谁都可以调速度。
-                                    一结束先倒数 {RESULT_MS / 1000} 秒看排名和死因，
-                                    再回到这里接着开下一局。
-                                </p>
-                                <p>
-                                    房主要是掉线或者离开，房主会随机换给还在的人。
-                                </p>
+                    <div className="room-main">
+                        <section className="room-seats">
+                            <div className="room-seats-head">
+                                <div>
+                                    <span className="room-seats-kicker font-mono">候场名录</span>
+                                    <strong className="font-display">
+                                        {players.length}
+                                        <small> / {MAX_PLAYERS} 人在席</small>
+                                    </strong>
+                                </div>
+                                <span className={`room-state ${ready ? 'ready' : ''}`}>
+                                    {ready ? '可以开局' : '等第二位入席'}
+                                </span>
                             </div>
-                        </details>
-                        {/* 等开局的时候也能聊天，弹幕和对战页共用一个组件 */}
-                        <div className="room-chat">
-                            <div className="room-chat-head">
-                                <span className="font-display">候场闲谈</span>
-                                <small>发条弹幕，房里的人都看得见</small>
+
+                            <ul className="room-seat-grid">
+                                {players.map((player, index) => {
+                                    const isMe = player.id === mp.id
+                                    return (
+                                        <li
+                                            key={player.id}
+                                            className={`room-seat player-tone-${index % 5}${isMe ? ' me' : ''}`}
+                                            style={{ ['--player-order' as string]: index }}
+                                        >
+                                            <span className="seat-no font-mono">
+                                                {String(index + 1).padStart(2, '0')}
+                                            </span>
+                                            {player.host && (
+                                                <span className="seat-seal font-display" title="房主">
+                                                    主
+                                                </span>
+                                            )}
+                                            <span className="player-avatar font-display" aria-hidden="true">
+                                                {player.name.trim().slice(0, 1) || '命'}
+                                            </span>
+                                            <span className="seat-name">{player.name}</span>
+                                            <span className="seat-state">
+                                                {isMe ? '这是你' : player.host ? '执笔候场' : '已入席'}
+                                            </span>
+                                        </li>
+                                    )
+                                })}
+                                {Array.from({ length: emptySeats }, (_, i) => {
+                                    const index = players.length + i
+                                    return (
+                                        <li
+                                            key={`empty-${index}`}
+                                            className="room-seat empty"
+                                            style={{ ['--player-order' as string]: index }}
+                                        >
+                                            <span className="seat-no font-mono">
+                                                {String(index + 1).padStart(2, '0')}
+                                            </span>
+                                            {i === 0 ? (
+                                                <button className="seat-invite" onClick={copyLink}>
+                                                    <span className="seat-hole" aria-hidden="true">+</span>
+                                                    <span>邀请入席</span>
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    <span className="seat-hole font-display" aria-hidden="true">虚</span>
+                                                    <span>虚位以待</span>
+                                                </>
+                                            )}
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+
+                            <footer className="room-seats-foot">
+                                <p className="room-status">
+                                    {host
+                                        ? ready
+                                            ? '人已到齐，随时可以开局。'
+                                            : '先把邀请链接发给朋友，等第二位入席。'
+                                        : '等房主落笔开局，先把链接发给朋友也行。'}
+                                </p>
+                                <div className="room-actions">
+                                    <button className="secondary" onClick={handleLeave}>
+                                        离开
+                                    </button>
+                                    {host && (
+                                        <button className="primary" onClick={start}>
+                                            开始对局
+                                        </button>
+                                    )}
+                                </div>
+                            </footer>
+                            {mp.message && <p className="room-error">{mp.message}</p>}
+                        </section>
+
+                        <aside className="room-side">
+                            {/* 等开局的时候也能聊天，弹幕和对战页共用一个组件 */}
+                            <div className="room-chat">
+                                <div className="room-side-head">
+                                    <span className="font-display">候场闲谈</span>
+                                    <small>房里的人都看得见</small>
+                                </div>
+                                <DanmakuTrack />
+                                <DanmakuInput />
                             </div>
-                            <DanmakuTrack />
-                            <DanmakuInput />
-                        </div>
+                            <section className="room-rules">
+                                <div className="room-side-head">
+                                    <span className="font-display">对局规则</span>
+                                </div>
+                                <ol>
+                                    <li>
+                                        <strong>到齐才走</strong>
+                                        <span>所有人选完天赋、分好点数进入对战页后，才自动往前推进。</span>
+                                    </li>
+                                    <li>
+                                        <strong>人人可控</strong>
+                                        <span>谁都可以暂停，谁都可以调速度。</span>
+                                    </li>
+                                    <li>
+                                        <strong>结算回房</strong>
+                                        <span>
+                                            结束后倒数 {RESULT_MS / 1000} 秒看排名和死因，再回到这里开下一局。
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <strong>房主易手</strong>
+                                        <span>房主掉线或离开，会随机交给还在的人。</span>
+                                    </li>
+                                </ol>
+                            </section>
+                        </aside>
                     </div>
                 </>
             )}

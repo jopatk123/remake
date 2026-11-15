@@ -44,9 +44,9 @@
     padding: 0 0.5rem;
 }
 
-.screen.room .room-lobby-tools > button.audio-toggle {
-    width: 2.2rem;
-    height: 2.2rem;
+.screen.room .room-banner-tools > button.audio-toggle {
+    width: 2.6rem;
+    height: 2.6rem;
     padding: 0;
     border-radius: 999px;
 }
