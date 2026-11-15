@@ -58,6 +58,9 @@ wss.on('connection', ws => {
             case 'start':
                 room.start(session.playerId)
                 break
+            case 'enter':
+                room.enter(session.playerId)
+                break
             case 'pause':
                 room.setPaused(session.playerId, msg.on)
                 break

@@ -24,8 +24,6 @@ type Send = (msg: ServerMessage) => void
 
 /** 每年之间的节拍，测试时可以调小：ROUND_MS=150 bun run src/index.ts */
 const ROUND = Math.max(60, Number(process.env.ROUND_MS ?? ROUND_MS))
-/** 开局后最多等多久就强制开跑，防止一个人卡在选天赋页把所有人挂住 */
-const ENTER_TIMEOUT = Math.max(1000, Number(process.env.ENTER_TIMEOUT ?? 60_000))
 /**
  * 结算浮层停留时长。默认 5 秒，测试里调小：RESULT_MS=600 bun run src/index.ts
  * 用环境变量而不是协议常量，是为了让同一份代码在测试和线上跑不同节奏。
@@ -106,6 +104,9 @@ function endingScore(ending: EndingType | null, alive: boolean): number {
 /**
  * 一个房间就是一组独立的人生赛跑。
  *
+ * 开局后先停在原地，等每个人选完天赋、分完点数、进入对战页并发来 enter。
+ * 全体存活玩家都报到后才发第一拍；有人还没准备好就一直等，不会强行开跑。
+ *
  * 推进是全自动的：服务端按 interval 的节拍发 tick，各端本地过一年再 sync 回来。
  * 谁都可能想停下来读一眼文字，所以 pause 不做权限 —— 任何人按下去都停，
  * 任何人再按一次都继续，这是唯一不会把人卡住的规则。节拍同理，谁都能调。
@@ -125,13 +126,13 @@ export class Room {
     private pausedBy: string | null = null
     /** 开局后等人进入对局（选天赋、分配属性要花点时间） */
     private waiting = false
+    /** 已发来 enter 的玩家：集齐所有存活玩家才开跑 */
     private entered = new Set<string>()
     /** 当前节拍：每年间隔毫秒。任何人改了都立刻重开定时器 */
     private interval = ROUND
     /** 上一局的排名，结算那一拍就填好，开局清空 */
     private result: RankingItem[] | null = null
     private clock: ReturnType<typeof setInterval> | null = null
-    private enterTimer: ReturnType<typeof setTimeout> | null = null
     /** 结算倒计时的截止时间与定时器，到点才收回大厅 */
     private resultDeadline = 0
     private resultTimer: ReturnType<typeof setTimeout> | null = null
@@ -235,14 +236,6 @@ export class Room {
             player.ending = null
         }
         this.startClock()
-        this.enterTimer = setTimeout(() => {
-            if (this.phase === 'playing' && this.waiting) {
-                console.log(`[${this.id}] 等人超时，强制开跑`)
-                this.waiting = false
-                this.enterTimer = null
-                this.broadcastRoom()
-            }
-        }, ENTER_TIMEOUT)
         this.broadcastRoom()
     }
 
@@ -292,16 +285,26 @@ export class Room {
         })
     }
 
+    /**
+     * 玩家完成选天赋与加点、真正进入对战页后报到。
+     *
+     * 只认这条消息，不再拿第一条 sync 当“进入”：sync 只说明本地有状态，
+     * 不能保证人已经走完准备流程。全部存活玩家都 enter 过才开跑。
+     */
+    enter(id: string) {
+        const player = this.players.get(id)
+        if (!player || this.phase !== 'playing') return
+        if (this.entered.has(id)) return
+        this.entered.add(id)
+        this.refreshWaiting()
+        this.broadcastRoom()
+    }
+
     sync(id: string, payload: SyncPayload) {
         const player = this.players.get(id)
         if (!player) return
         // 结算那一拍可能还有在路上的 sync，进了结算 / 落回大厅就别再写进来了
         if (this.phase !== 'playing') return
-        // 第一条 sync 代表这个人已经进入对局了，可以开始跑
-        if (!this.entered.has(id)) {
-            this.entered.add(id)
-            this.refreshWaiting()
-        }
         player.age = payload.age
         player.life = payload.life
         player.summary = payload.summary
@@ -337,8 +340,6 @@ export class Room {
     dispose() {
         this.stopClock()
         this.stopResult()
-        if (this.enterTimer) clearTimeout(this.enterTimer)
-        this.enterTimer = null
         this.players.clear()
         this.entered.clear()
         this.danmakuAt.clear()
@@ -377,15 +378,14 @@ export class Room {
         this.broadcastRoom()
     }
 
-    /** 活人都进来了就开始跑；有人在选天赋就一直等（最多等 ENTER_TIMEOUT） */
+    /** 活人都完成准备并进入对局后才开始跑；有人没报到就一直等 */
     private refreshWaiting() {
         if (this.phase !== 'playing' || !this.waiting) return
         const alive = this.alivePlayers()
         if (alive.length === 0) return
         if (!alive.every(p => this.entered.has(p.id))) return
         this.waiting = false
-        if (this.enterTimer) clearTimeout(this.enterTimer)
-        this.enterTimer = null
+        console.log(`[${this.id}] 全员进入对局，开始推进`)
     }
 
     /** 所有人跑完后结算；返回 true 表示刚结算完、房间视图已经广播过了 */
@@ -396,23 +396,16 @@ export class Room {
         // 两种收摊条件：所有人都结束（阵亡 / 飞升 / 离世 / 转世）/ 回合保护。
         // 不再「有人飞升就提前收摊」：最后一个人结束前，其他列继续跑，
         // 否则活着的人没有死因，榜单会出现一排「不明」。
-        // 进入超时后还没进来的人不阻塞结算：他们没跑这一局，年龄会停在 0。
-        const allEnded = players.every(
-            p => !p.alive || !this.entered.has(p.id),
-        )
+        // 开跑前已经等齐所有存活玩家，所以推进中活着的人必然进入过对局。
+        const allEnded = players.every(p => !p.alive)
         const timeout = this.round >= MAX_ROUNDS
         if (!allEnded && !timeout) return false
         this.phase = 'over'
         this.stopClock()
-        if (this.enterTimer) clearTimeout(this.enterTimer)
-        this.enterTimer = null
-        // 真正跑过这一局的人才参与「活着 > 阵亡」的排名；
-        // 卡在天赋页没进来的人不该压过已经阵亡的玩家。
-        const racing = (p: Player) => p.alive && this.entered.has(p.id)
         this.result = players
             .sort((a, b) => {
-                const av = endingScore(a.ending, racing(a))
-                const bv = endingScore(b.ending, racing(b))
+                const av = endingScore(a.ending, a.alive)
+                const bv = endingScore(b.ending, b.alive)
                 if (av !== bv) return bv - av
                 if (a.realm !== b.realm) return b.realm - a.realm
                 return b.age - a.age || b.summary - a.summary

@@ -30,7 +30,6 @@ export async function startRelay(
             PORT: String(port),
             ROUND_MS: String(TICK),
             RESULT_MS: String(RESULT),
-            ENTER_TIMEOUT: '4000',
             ...env,
         },
         stdio: ['ignore', 'pipe', 'pipe'],

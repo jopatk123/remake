@@ -71,8 +71,8 @@ class Client {
         this.send({ t: 'join', room, name: this.name })
     }
 
-    /** 进入对局（真人这边是打开对战页时自动发的第一条 sync） */
-    enter(age = 0) {
+    /** 只上报状态，不表示已经完成准备进入对局 */
+    sync(age = 0) {
         this.send({
             t: 'sync',
             age,
@@ -82,6 +82,12 @@ class Client {
             props: { charm: 1, intelligence: 1, strength: 1, money: 1, spirit: 5 },
             logs: [{ age, events: [10009], talents: [1001], achievements: [] }],
         })
+    }
+
+    /** 完成天赋与加点、进入对战页（真人这边由 Battle 挂载时发送） */
+    enter(age = 0) {
+        this.send({ t: 'enter' })
+        this.sync(age)
     }
 
     lastRoom() {
@@ -128,6 +134,11 @@ async function main() {
     a.enter()
     await sleep(120)
     ok('只进了一个人，还在等', a.lastRoom()?.waiting.join() === '乙')
+    // 只发 sync 说明本地有状态，不代表已经选完天赋 / 分完点数，不能算进入
+    b.sync()
+    await sleep(220)
+    ok('只上报 sync 不算进入，仍在等', a.lastRoom()?.waiting.join() === '乙')
+    ok('还有人没进入时一年都不走', a.ticks.length === 0)
     b.enter()
     await sleep(TICK + 150)
     ok('两人都进入后自动开跑', a.lastRoom()?.paused === false)

@@ -60,7 +60,7 @@ class Peer {
     send(msg: object) {
         this.ws.send(JSON.stringify(msg))
     }
-    enter(age = 0) {
+    sync(age = 0) {
         this.send({
             t: 'sync',
             age,
@@ -70,6 +70,10 @@ class Peer {
             props: PROPS,
             logs: [{ age, events: [10009], talents: [1001], achievements: [] }],
         })
+    }
+    enter(age = 0) {
+        this.send({ t: 'enter' })
+        this.sync(age)
     }
     close() {
         this.ws.close()
@@ -101,9 +105,13 @@ async function main() {
 
     console.log('\n[自动推进]')
     client.sync({ age: 0, life: 5, alive: true, summary: 0, props: PROPS, logs: [] })
+    peer.sync()
+    await sleep(250)
+    ok('只上报状态不算进入，仍在等人', client.getSnapshot().room?.paused === true)
+    client.enter()
     peer.enter()
     await sleep(TICK * 3)
-    ok('两人进入后不再等', client.getSnapshot().room?.paused === false)
+    ok('两人都报到后不再等', client.getSnapshot().room?.paused === false)
     ok('没人点继续也推进了', client.getSnapshot().round >= 1)
     ok('陪练也收到同一节拍', peer.ticks.length > 0)
 

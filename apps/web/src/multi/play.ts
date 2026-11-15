@@ -28,6 +28,14 @@ export function useMultiMatch(
     const [profile] = useProfile()
     const advanced = useRef(0)
     const synced = useRef('')
+    const entered = useRef(false)
+
+    // 对战页真正挂载（天赋与加点都完成）后才报到；服务端集齐所有人才开跑
+    useEffect(() => {
+        if (!active || !state || entered.current) return
+        entered.current = true
+        client.enter()
+    }, [active, state])
 
     useEffect(() => {
         if (!active) return

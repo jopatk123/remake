@@ -146,6 +146,8 @@ export function send(msg: ClientMessage) {
 }
 
 export const start = () => send({ t: 'start' })
+/** 选完天赋、分完点数、进入对战页后报到；全房间集齐才开始推进 */
+export const enter = () => send({ t: 'enter' })
 /** 任意玩家都能停 / 继续，服务端不校验谁按的 */
 export const setPaused = (on: boolean) => send({ t: 'pause', on })
 /** 任意玩家都能调节拍，全房间跟着变 */

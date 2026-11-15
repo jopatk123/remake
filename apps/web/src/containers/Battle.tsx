@@ -440,7 +440,7 @@ export function Battle() {
             {room.paused && (
                 <div className="battle-pause">
                     {waiting.length > 0
-                        ? `等待 ${waiting.join('、')} 选完天赋…`
+                        ? `等待 ${waiting.join('、')} 完成天赋与加点…`
                         : `${room.pausedBy ?? '有人'} 暂停了对局，任何一个人都可以点「继续」`}
                 </div>
             )}
