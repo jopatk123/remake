@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>音频设计预览 · 轮回命书</title>
+<style>
+  :root {
+    --paper: #f3efe4;
+    --surface: #fffdf7;
+    --ink: #1d231f;
+    --muted: #5b655e;
+    --line: #d8d1bf;
+    --primary: #2f6b58;
+    --secondary: #44568f;
+    --accent: #8b5c0b;
+    --seal: #a43a32;
+    --gold: #8b5c0b;
+    --blood: #a43a32;
+    --azure: #1f6f90;
+    --jade: #2f6b58;
+    --violet: #8036b0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #121613;
+      --surface: #1b201c;
+      --ink: #f4f0e4;
+      --muted: #aab4aa;
+      --line: #2c342d;
+      --primary: #93dcc4;
+      --secondary: #bfc9ff;
+      --accent: #f2cf86;
+      --seal: #ff9b8f;
+      --gold: #f2cf86;
+      --blood: #ff9b8f;
+      --azure: #afe3ff;
+      --jade: #93dcc4;
+      --violet: #e09eff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif;
+    padding: 28px 20px 48px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 880px; margin: 0 auto; }
+  .serif {
+    font-family: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+  }
+  header { margin-bottom: 22px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: .18em; color: var(--muted);
+    text-transform: uppercase; font-family: ui-monospace, Menlo, monospace;
+  }
+  h1 { font-size: 25px; margin: 8px 0 6px; font-weight: 600; letter-spacing: .02em; }
+  .lede { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.65; }
+
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 6px 20px #3a311b0e;
+  }
+  .now { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .now-name { font-size: 19px; font-weight: 600; }
+  .now-mode { font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .now-tag {
+    font-size: 10.5px; padding: 2px 7px; border-radius: 999px;
+    border: 1px solid currentColor; color: var(--primary);
+  }
+  .meter {
+    display: inline-block; width: 62px; height: 4px; border-radius: 2px;
+    background: var(--line); overflow: hidden; vertical-align: middle;
+  }
+  .meter i {
+    display: block; height: 100%; width: 0%; border-radius: 2px;
+    background: var(--primary); transition: width .07s linear;
+  }
+  canvas { width: 100%; height: 148px; display: block; border-radius: 8px; background: #0000; }
+
+  .layers { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .layer {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--muted);
+    padding: 4px 9px 4px 7px; border-radius: 999px;
+    border: 1px solid var(--line); background: transparent;
+    transition: color .25s, border-color .25s, background .25s;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .layer i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--line); transition: background .2s, box-shadow .2s, transform .2s;
+  }
+  .layer.on { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+  .layer.on i { background: var(--primary); }
+  .layer.hit i { transform: scale(1.9); box-shadow: 0 0 9px var(--primary); }
+
+  nav { margin-top: 18px; }
+  .nav-label {
+    font-size: 11px; color: var(--muted); margin-bottom: 9px;
+    letter-spacing: .1em; font-family: ui-monospace, Menlo, monospace;
+  }
+  .presets { display: flex; gap: 7px; flex-wrap: wrap; }
+  .preset {
+    font: inherit; font-size: 13px; cursor: pointer;
+    padding: 8px 13px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    transition: transform .14s cubic-bezier(.22,1,.36,1), border-color .18s, background .18s, color .18s;
+  }
+  .preset:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+  .preset[aria-pressed="true"] {
+    background: var(--primary); border-color: var(--primary); color: var(--paper);
+  }
+  .preset:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .preset.seal { border-color: color-mix(in srgb, var(--seal) 45%, transparent); color: var(--seal); }
+  .preset.seal:hover { border-color: var(--seal); }
+
+  .bar { display: flex; gap: 9px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .start {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 11px 22px; border-radius: 8px; border: 1px solid var(--primary);
+    background: var(--primary); color: #fffdf6;
+  }
+  .start:disabled { opacity: .35; cursor: default; }
+  .ghost {
+    font: inherit; font-size: 13px; cursor: pointer;
+    padding: 9px 14px; border-radius: 8px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+  }
+  .ghost:hover { border-color: var(--secondary); color: var(--secondary); }
+  .vol { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  input[type=range] { width: 108px; accent-color: var(--primary); }
+
+  footer {
+    margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--muted); line-height: 1.75;
+  }
+  footer code {
+    font-family: ui-monospace, Menlo, monospace; font-size: 11.5px;
+    background: color-mix(in srgb, var(--ink) 7%, transparent);
+    padding: 1px 5px; border-radius: 4px;
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; min-height: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Audio Design Preview</div>
+    <h1 class="serif">轮回命书 · 配乐原型</h1>
+    <p class="lede">
+      全部声音由 Web Audio 现场合成，没有加载任何音频文件。切换下方情境，
+      听同一套引擎如何按境界改变调式、层数与速度。
+    </p>
+  </header>
+
+  <section class="stage">
+    <div class="now">
+      <span class="now-name serif" id="nowName">未开始</span>
+      <span class="now-mode" id="nowMode">—</span>
+      <span class="now-tag" id="nowTag">等待手势解锁</span>
+      <span class="meter" title="输出电平"><i id="meterFill"></i></span>
+    </div>
+    <canvas id="roll" width="1600" height="296"></canvas>
+    <div class="layers" id="layers"></div>
+    <div class="hint" id="hint">先点「开始」——浏览器要求音频必须由一次点击解锁。</div>
+    <div class="hint" id="selftest" style="display:none"></div>
+  </section>
+
+  <nav>
+    <div class="nav-label">凡人 · 十年一章</div>
+    <div class="presets" id="mortalRow">
+      <button class="preset" data-kind="mortal" data-age="5" disabled>启蒙 · 5 岁</button>
+      <button class="preset" data-kind="mortal" data-age="30" disabled>而立 · 30 岁</button>
+      <button class="preset" data-kind="mortal" data-age="55" disabled>知天命 · 55 岁</button>
+      <button class="preset" data-kind="mortal" data-age="85" disabled>迟暮 · 85 岁</button>
+    </div>
+    <div class="nav-label" style="margin-top:14px">修仙 · 境界</div>
+    <div class="presets" id="realmRow">
+      <button class="preset" data-kind="realm" data-realm="0" disabled>炼气</button>
+      <button class="preset" data-kind="realm" data-realm="2" disabled>金丹</button>
+      <button class="preset" data-kind="realm" data-realm="3" disabled>元婴</button>
+      <button class="preset" data-kind="realm" data-realm="5" disabled>炼虚</button>
+      <button class="preset" data-kind="realm" data-realm="8" disabled>渡劫</button>
+      <button class="preset seal" data-kind="ascend" disabled>飞升</button>
+    </div>
+    <div class="bar">
+      <button class="start" id="start">开始</button>
+      <button class="ghost" id="stop" disabled>停止</button>
+      <label class="vol">音量 <input type="range" id="vol" min="0" max="100" value="55"></label>
+    </div>
+  </nav>
+
+  <footer>
+    音阶固定为五声，<code>宫商角徵羽</code>；每次换境界只移动「宫」的位置（旋宫转调），
+    音高材料不变而重心改变。凡人段刻意用自然大调并让八音盒走音 ±8 cent，
+    到 100 岁入道才切回五声 —— 那一下是全游戏最重要的听觉转折。<br>
+    详见 <code>docs/audio-design.md</code>。
+  </footer>
+</main>
+
+<script>
+(() => {
+'use strict'
+
+/* ─────────────────────────── 基础 ─────────────────────────── */
+
+let ctx = null
+let master, musicBus, reverb, reverbGain
+let analyser = null, meterBuf = null
+let playing = false, timer = null
+let nextNoteTime = 0, step = 0
+
+const NOTES = []  // 供可视化：{ t, midi, layer, dur }
+
+/* 五声（相对主音的半音数）；mode 决定从哪个音当主音 */
+const MODE_INTERVALS = {
+  gong:  [0, 2, 4, 7, 9],     // 宫
+  shang: [0, 2, 5, 7, 10],    // 商
+  jue:   [0, 3, 5, 7, 10],    // 角
+  zhi:   [0, 2, 5, 7, 9],     // 徵
+  yu:    [0, 3, 5, 7, 10],    // 羽
+}
+/* 凡人用自然大调，好让入道那一刻的切换有落差 */
+const MAJOR = [0, 2, 4, 5, 7, 9, 11]
+
+/* 境界配置表：与文档第四节的表一致 */
+const REALM_CFG = [
+  { name: '炼气', mode: 'gong',  modeLabel: '宫',     root: 50, bpm: 60, layers: [0, 1, 2, 5],    density: 0.85 },
+  { name: '筑基', mode: 'zhi',   modeLabel: '宫 → 徵', root: 50, bpm: 64, layers: [0, 1, 2, 3, 5], density: 0.85 },
+  { name: '金丹', mode: 'zhi',   modeLabel: '徵',     root: 48, bpm: 68, layers: [0, 1, 2, 3, 4],    density: 0.9  },
+  { name: '元婴', mode: 'yu',    modeLabel: '徵 → 羽', root: 48, bpm: 72, layers: [0, 1, 2, 3, 4, 5], density: 0.9  },
+  { name: '化神', mode: 'yu',    modeLabel: '羽',     root: 45, bpm: 66, layers: [0, 1, 2, 3, 5],    density: 0.6  },
+  { name: '炼虚', mode: 'yu',    modeLabel: '羽（低）', root: 43, bpm: 60, layers: [0, 1, 3, 5],       density: 0    },
+  { name: '合体', mode: 'gong',  modeLabel: '羽 → 宫', root: 45, bpm: 64, layers: [0, 1, 2, 3, 5],    density: 0.8  },
+  { name: '大乘', mode: 'gong',  modeLabel: '宫（高）', root: 50, bpm: 68, layers: [0, 1, 2, 3, 4, 5], density: 1    },
+  { name: '渡劫', mode: 'jue',   modeLabel: '角 + b2', root: 47, bpm: 72, layers: [0, 1, 2, 3, 4],    density: 1, trib: true },
+]
+
+const MORTAL_BANDS = [
+  { max: 9,   name: '启蒙', bpm: 54, density: 0.35, octave: 2, layers: [0, 2],       detune: 8 },
+  { max: 19,  name: '及冠', bpm: 56, density: 0.5,  octave: 2, layers: [0, 2],       detune: 8 },
+  { max: 39,  name: '而立', bpm: 58, density: 0.7,  octave: 1, layers: [0, 1, 2],    detune: 7 },
+  { max: 59,  name: '知天命', bpm: 58, density: 0.65, octave: 1, layers: [0, 1, 2, 3], detune: 7 },
+  { max: 79,  name: '花甲', bpm: 54, density: 0.45, octave: 0, layers: [0, 1, 2],    detune: 9 },
+  { max: 99,  name: '迟暮', bpm: 48, density: 0.22, octave: 0, layers: [0, 2],       detune: 11 },
+]
+
+/* 当前场景 */
+let cfg = null
+let melDeg = 0
+let restBars = 0
+let barsLeft = 0
+
+function midiToHz(m) { return 440 * Math.pow(2, (m - 69) / 12) }
+function rand(a, b) { return a + Math.random() * (b - a) }
+function pick(arr) { return arr[(Math.random() * arr.length) | 0] }
+
+/* ─────────────────────────── 音频图 ─────────────────────────── */
+
+function makeIROn(c, seconds, decay) {
+  const rate = c.sampleRate
+  const len = Math.floor(rate * seconds)
+  const buf = c.createBuffer(2, len, rate)
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch)
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay)
+    }
+  }
+  return buf
+}
+
+function initAudio() {
+  if (ctx) return
+  ctx = new (window.AudioContext || window.webkitAudioContext)()
+
+  const g = buildGraph(ctx)
+  master = g.master
+  musicBus = g.musicBus
+  reverb = g.reverb
+  reverbGain = g.reverbGain
+
+  /* 电平表：从压缩器后取样，能反映真实输出 */
+  analyser = ctx.createAnalyser()
+  analyser.fftSize = 1024
+  meterBuf = new Float32Array(analyser.fftSize)
+  g.comp.connect(analyser)
+}
+
+/** 在任意 BaseAudioContext 上搭同一套总线，离线自检复用它 */
+function buildGraph(c) {
+  const comp = c.createDynamicsCompressor()
+  comp.threshold.value = -12
+  comp.ratio.value = 4
+  comp.release.value = 0.25
+  comp.connect(c.destination)
+
+  const m = c.createGain()
+  m.gain.value = 0.85
+  m.connect(comp)
+
+  const bus = c.createGain()
+  bus.gain.value = 0.22
+  bus.connect(m)
+
+  const rv = c.createConvolver()
+  rv.buffer = makeIROn(c, 1.8, 2.6)
+  const rg = c.createGain()
+  rg.gain.value = 0.42
+  rv.connect(rg)
+  rg.connect(bus)
+
+  return { comp, master: m, musicBus: bus, reverb: rv, reverbGain: rg }
+}
+
+/** 把一个音源接到干声总线 + 混响发送 */
+function route(node, wet) {
+  const dry = ctx.createGain()
+  dry.gain.value = 1
+  node.connect(dry)
+  dry.connect(musicBus)
+  if (wet > 0) {
+    const send = ctx.createGain()
+    send.gain.value = wet
+    node.connect(send)
+    send.connect(reverb)
+  }
+}
+
+/* ─────────────────────────── 合成原语 ─────────────────────────── */
+
+function pluck(freq, time, dur, gain, detuneCents) {
+  const o1 = ctx.createOscillator()
+  const o2 = ctx.createOscillator()
+  o1.type = 'triangle'
+  o2.type = 'sawtooth'
+  o1.frequency.value = freq
+  o2.frequency.value = freq * 2.004
+  if (detuneCents) {
+    o1.detune.value = rand(-detuneCents, detuneCents)
+    o2.detune.value = rand(-detuneCents, detuneCents)
+  }
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.Q.value = 0.9
+  lp.frequency.setValueAtTime(Math.min(6000, freq * 9), time)
+  lp.frequency.exponentialRampToValueAtTime(Math.max(220, freq * 1.8), time + 0.14)
+
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, time)
+  g.gain.linearRampToValueAtTime(gain, time + 0.005)
+  g.gain.exponentialRampToValueAtTime(0.0001, time + dur)
+
+  o1.connect(lp); o2.connect(lp); lp.connect(g)
+  route(g, 0.35)
+  o1.start(time); o2.start(time)
+  o1.stop(time + dur + 0.05); o2.stop(time + dur + 0.05)
+  return freq
+}
+
+function bell(freq, time, dur, gain) {
+  const car = ctx.createOscillator()
+  const mod = ctx.createOscillator()
+  car.type = 'sine'
+  mod.type = 'sine'
+  car.frequency.value = freq
+  mod.frequency.value = freq * 3.51
+
+  const modGain = ctx.createGain()
+  modGain.gain.setValueAtTime(freq * 4.5, time)
+  modGain.gain.exponentialRampToValueAtTime(freq * 0.02, time + dur * 0.45)
+  mod.connect(modGain)
+  modGain.connect(car.frequency)
+
+  const env = ctx.createGain()
+  env.gain.setValueAtTime(0.0001, time)
+  env.gain.linearRampToValueAtTime(gain, time + 0.008)
+  env.gain.exponentialRampToValueAtTime(0.0001, time + dur)
+
+  car.connect(env)
+  route(env, 0.85)
+  car.start(time); mod.start(time)
+  car.stop(time + dur + 0.1); mod.stop(time + dur + 0.1)
+}
+
+/** 木鱼 / 木块 */
+function woodblock(time, gain, pitch) {
+  const len = Math.floor(ctx.sampleRate * 0.09)
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.16))
+  const src = ctx.createBufferSource()
+  src.buffer = buf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = pitch || 900
+  bp.Q.value = 7
+  const g = ctx.createGain()
+  g.gain.value = gain
+  src.connect(bp); bp.connect(g)
+  route(g, 0.18)
+  src.start(time)
+}
+
+/** 大鼓：低频下滑 */
+function drum(time, gain) {
+  const o = ctx.createOscillator()
+  o.type = 'sine'
+  o.frequency.setValueAtTime(112, time)
+  o.frequency.exponentialRampToValueAtTime(44, time + 0.2)
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, time)
+  g.gain.linearRampToValueAtTime(gain, time + 0.006)
+  g.gain.exponentialRampToValueAtTime(0.0001, time + 0.42)
+  o.connect(g)
+  route(g, 0.3)
+  o.start(time); o.stop(time + 0.5)
+}
+
+/* 持续层（低音 / 和声垫）：换境界时淡入淡出 */
+const drones = {}
+
+function startDrone(key, freqs, gain, wet) {
+  if (drones[key]) return
+  const nodes = []
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, ctx.currentTime)
+  g.gain.linearRampToValueAtTime(gain, ctx.currentTime + 1.6)
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 900
+  lp.connect(g)
+  route(g, wet)
+
+  for (const f of freqs) {
+    const o = ctx.createOscillator()
+    o.type = 'sine'
+    o.frequency.value = f
+    o.detune.value = rand(-4, 4)
+    o.connect(lp)
+    o.start()
+    nodes.push(o)
+  }
+  /* 呼吸：0.07 Hz 的缓慢起伏 */
+  const lfo = ctx.createOscillator()
+  lfo.frequency.value = 0.07
+  const lfoGain = ctx.createGain()
+  lfoGain.gain.value = gain * 0.3
+  lfo.connect(lfoGain)
+  lfoGain.connect(g.gain)
+  lfo.start()
+  nodes.push(lfo)
+
+  drones[key] = { nodes, gain: g, freqs, baseGain: gain }
+}
+
+/**
+ * 设置持续层：根音或音量变了就重起，没变就继续。
+ * 不能直接 startDrone —— 换境界时根音会挪，旧的低音会赖着不走。
+ */
+function setDrone(key, freqs, gain, wet) {
+  const cur = drones[key]
+  if (cur) {
+    const sameFreq =
+      cur.freqs.length === freqs.length &&
+      cur.freqs.every((f, i) => Math.abs(f - freqs[i]) < 0.5)
+    if (sameFreq && Math.abs(cur.baseGain - gain) < 0.001) return
+    stopDrone(key, 0.9)
+  }
+  startDrone(key, freqs, gain, wet)
+}
+
+function stopDrone(key, fade) {
+  const d = drones[key]
+  if (!d) return
+  delete drones[key]
+  const t = ctx.currentTime
+  d.gain.gain.cancelScheduledValues(t)
+  d.gain.gain.setValueAtTime(Math.max(0.0001, d.gain.gain.value), t)
+  d.gain.gain.linearRampToValueAtTime(0.0001, t + (fade || 1.4))
+  for (const n of d.nodes) { try { n.stop(t + (fade || 1.4) + 0.1) } catch (e) {} }
+}
+
+/* ─────────────────────────── 调式工具 ─────────────────────────── */
+
+function intervalsOf() {
+  return cfg.mortal ? MAJOR : MODE_INTERVALS[cfg.mode]
+}
+
+function degToMidi(deg) {
+  const iv = intervalsOf()
+  const n = iv.length
+  const oct = Math.floor(deg / n)
+  const idx = ((deg % n) + n) % n
+  return cfg.root + iv[idx] + 12 * oct
+}
+
+/* ─────────────────────────── 调度 ─────────────────────────── */
+
+function scheduleStep(s, time) {
+  const barPos = s % 8
+  const isBarStart = barPos === 0
+  const iv = intervalsOf()
+
+  /* 每 8 小节决定后面是否休止 */
+  if (s % 64 === 0) {
+    if (barsLeft <= 0) {
+      if (restBars > 0) { restBars-- }
+      else if (Math.random() < 0.12) { restBars = 2 }
+      barsLeft = 8
+    }
+    barsLeft--
+  }
+
+  const lay = cfg.layers
+
+  /* L4 节拍 */
+  if (lay.includes(4) && (barPos === 0 || barPos === 4)) {
+    if (cfg.trib) drum(time, 0.34)
+    else if (cfg.name === '金丹' || cfg.name === '元婴') woodblock(time, 0.13, 820)
+    else if (cfg.name === '大乘') drum(time, 0.2)
+    else woodblock(time, 0.1, 700)
+    hitLayer(4)
+  }
+
+  /* L2 旋律 */
+  if (lay.includes(2) && restBars === 0 && cfg.density > 0) {
+    const isEven = barPos % 2 === 0
+    const p = isEven ? cfg.density : cfg.density * 0.32
+    if (Math.random() < p) {
+      /* 随机游走 */
+      const r = Math.random()
+      if (r < 0.7) melDeg += Math.random() < 0.5 ? 1 : -1
+      else if (r < 0.95) melDeg += Math.random() < 0.5 ? 2 : -2
+      melDeg = Math.max(-3, Math.min(9, melDeg))
+
+      /* 乐句尾落稳定音：宫(0) 或 徵(3) */
+      let deg = melDeg
+      if (barPos === 7 || barPos === 6) deg = pick([0, 3, 0, 4])
+      if (s % 256 >= 192 && barPos === 7) deg = 4  /* 每第 4 句落羽，悬置 */
+
+      const midi = degToMidi(deg) + 12 * (cfg.mortal ? cfg.octave : 1)
+      const hz = midiToHz(midi)
+      const dur = cfg.trib ? 0.5 : rand(0.7, 1.3)
+      const g = cfg.mortal ? 0.16 : 0.2
+
+      pluck(hz, time, dur, g, cfg.mortal ? cfg.detune : 0)
+      pushNote(time, midi, 2, dur)
+      hitLayer(2)
+
+      /* 凡人段偶尔借用 bVI，制造"不属于人间"的裂缝 */
+      if (cfg.mortal && Math.random() < 0.05) {
+        const bvi = midiToHz(cfg.root + 8 + 12 * cfg.octave)
+        pluck(bvi, time + 0.24, 1.6, 0.09, cfg.detune)
+        pushNote(time + 0.24, cfg.root + 8 + 12 * cfg.octave, 2, 1.6)
+      }
+
+      /* 渡劫：偶尔插入不解决的 b2 */
+      if (cfg.trib && Math.random() < 0.3) {
+        const b2 = midiToHz(cfg.root + 1 + 12)
+        pluck(b2, time, 0.5, 0.12, 0)
+        pushNote(time, cfg.root + 1 + 12, 2, 0.5)
+      }
+    }
+  }
+
+  /* L5 磬 / 铃：稀疏 */
+  if (lay.includes(5) && isBarStart && Math.random() < 0.055) {
+    const midi = degToMidi(pick([0, 3, 4])) + 24
+    bell(midiToHz(midi), time, rand(3.2, 5.0), 0.1)
+    pushNote(time, midi, 5, 3.6)
+    hitLayer(5)
+  }
+
+  /* L0 纸声：极轻的纸面摩擦，几乎听不见，只是让静音不空 */
+  if (lay.includes(0) && isBarStart && Math.random() < 0.5) {
+    paper(time)
+    hitLayer(0)
+  }
+}
+
+/** 纸声：极短的低幅噪声，低通到 1.6kHz */
+function paper(time) {
+  const len = Math.floor(ctx.sampleRate * 0.16)
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) {
+    const t = i / len
+    d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * t) * 0.4
+  }
+  const src = ctx.createBufferSource()
+  src.buffer = buf
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 1600
+  const g = ctx.createGain()
+  g.gain.value = 0.05
+  src.connect(lp); lp.connect(g)
+  route(g, 0.15)
+  src.start(time)
+}
+
+/* ─────────────────────────── 场景切换 ─────────────────────────── */
+
+function applyMortal(age) {
+  const band = MORTAL_BANDS.find(b => age <= b.max) || MORTAL_BANDS[MORTAL_BANDS.length - 1]
+  cfg = {
+    mortal: true,
+    name: '凡人 · ' + band.name,
+    modeLabel: '自然大调（八音盒）',
+    root: 60,
+    bpm: band.bpm,
+    layers: band.layers,
+    density: band.density,
+    octave: band.octave,
+    detune: band.detune,
+    trib: false,
+  }
+  syncLayers()
+  /* 低音层：只在中段出现 */
+  if (band.layers.includes(1)) {
+    setDrone('low', [midiToHz(36), midiToHz(43)], 0.1, 0.4)
+  } else {
+    stopDrone('low', 1.2)
+  }
+  stopDrone('pad', 1.2)
+}
+
+function applyRealm(index) {
+  const c = REALM_CFG[index]
+  cfg = {
+    mortal: false,
+    name: c.name,
+    modeLabel: c.modeLabel,
+    root: c.root,
+    bpm: c.bpm,
+    layers: c.layers,
+    density: c.density,
+    octave: 1,
+    detune: 0,
+    trib: !!c.trib,
+  }
+  syncLayers()
+
+  /* L1 持续低音：根音 + 五度 */
+  const iv = MODE_INTERVALS[c.mode]
+  const rootMidi = c.root - 12
+  setDrone('low', [midiToHz(rootMidi), midiToHz(rootMidi + iv[3])], 0.11, 0.45)
+
+  /* L3 和声垫 */
+  if (c.layers.includes(3)) {
+    const third = c.mode === 'yu' || c.mode === 'jue' ? iv[1] : iv[2]
+    setDrone('pad', [
+      midiToHz(rootMidi + third),
+      midiToHz(rootMidi + iv[3]),
+      midiToHz(rootMidi + 12),
+    ], 0.055, 0.9)
+  } else {
+    stopDrone('pad', 1.6)
+  }
+}
+
+/** 入道：静默 → 磬 → 五声进来。全游戏最重要的一次转折 */
+function enterCultivation() {
+  stopDrone('low', 0.45)
+  stopDrone('pad', 0.45)
+  const t = ctx.currentTime
+  bell(midiToHz(77), t + 0.75, 6.5, 0.2)
+  setTimeout(() => {
+    if (!playing) return
+    applyRealm(0)
+    nextNoteTime = ctx.currentTime + 0.1
+    step = 0
+  }, 1500)
+}
+
+function ascend() {
+  /* 硬静音 → 磬 → 五声堆叠 → 全奏 → 长尾 */
+  stopDrone('low', 0.2)
+  stopDrone('pad', 0.2)
+  const t = ctx.currentTime + 0.65
+  bell(midiToHz(77), t, 7, 0.22)
+  const gong = [0, 2, 4, 7, 9]
+  for (let i = 0; i < 10; i++) {
+    const midi = 50 + gong[i % 5] + 12 * Math.floor(i / 5)
+    pluck(midiToHz(midi), t + 0.7 + i * 0.34, 2.6, 0.13, 0)
+    pushNote(t + 0.7 + i * 0.34, midi, 2, 2.6)
+  }
+  setTimeout(() => {
+    if (!playing) return
+    drum(t + 2.4, 0.4)
+    bell(midiToHz(86), t + 2.4, 8, 0.18)
+    startDrone('low', [midiToHz(38), midiToHz(45)], 0.12, 0.6)
+  }, 3100)
+}
+
+/* ─────────────────────────── 循环 ─────────────────────────── */
+
+let lastTick = 0
+
+function loop() {
+  if (!playing) return
+  const head = ctx.currentTime + 0.12
+  while (nextNoteTime < head) {
+    scheduleStep(step, nextNoteTime)
+    nextNoteTime += (60 / cfg.bpm) / 2
+    step++
+  }
+}
+
+function startLoop() {
+  if (timer) return
+  nextNoteTime = ctx.currentTime + 0.08
+  step = 0
+  timer = setInterval(loop, 25)
+}
+
+function stopLoop() {
+  clearInterval(timer)
+  timer = null
+}
+
+/* ─────────────────────────── 可视化 ─────────────────────────── */
+
+const canvas = document.getElementById('roll')
+const g2d = canvas.getContext('2d')
+const meterFill = document.getElementById('meterFill')
+let W = 0, H = 0
+
+/** 独立于 rAF 更新，标签页不可见时也能反映真实输出 */
+function drawMeter() {
+  if (!analyser) return
+  analyser.getFloatTimeDomainData(meterBuf)
+  let sum = 0
+  for (let i = 0; i < meterBuf.length; i++) sum += meterBuf[i] * meterBuf[i]
+  const rms = Math.sqrt(sum / meterBuf.length)
+  const db = 20 * Math.log10(rms + 1e-9)
+  const pct = Math.max(0, Math.min(1, (db + 55) / 55))
+  meterFill.style.width = (pct * 100).toFixed(0) + '%'
+}
+
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1)
+  const rect = canvas.getBoundingClientRect()
+  W = rect.width; H = rect.height
+  canvas.width = W * dpr
+  canvas.height = H * dpr
+  g2d.setTransform(dpr, 0, 0, dpr, 0, 0)
+}
+window.addEventListener('resize', resize)
+
+function pushNote(t, midi, layer, dur) {
+  NOTES.push({ t, midi, layer, dur })
+  if (NOTES.length > 400) NOTES.splice(0, 120)
+}
+
+const LAYER_COLORS = {
+  2: () => css('--primary'),
+  4: () => css('--accent'),
+  5: () => css('--secondary'),
+}
+function css(v) {
+  return getComputedStyle(document.documentElement).getPropertyValue(v).trim()
+}
+
+function draw() {
+  requestAnimationFrame(draw)
+  if (!W) return
+  g2d.clearRect(0, 0, W, H)
+
+  drawMeter()
+  const now = ctx ? ctx.currentTime : 0
+  const span = 6           /* 屏幕显示 6 秒 */
+  const pxPerSec = W / span
+
+  /* 时间栅格 */
+  g2d.strokeStyle = css('--line')
+  g2d.globalAlpha = 0.5
+  g2d.lineWidth = 1
+  for (let i = 0; i <= span; i++) {
+    const x = W - i * pxPerSec
+    g2d.beginPath(); g2d.moveTo(x, 0); g2d.lineTo(x, H); g2d.stroke()
+  }
+  g2d.globalAlpha = 1
+
+  if (!ctx) return
+
+  const lo = 30, hi = 100
+  const yOf = m => H - ((m - lo) / (hi - lo)) * (H - 14) - 7
+
+  for (const n of NOTES) {
+    const age = now - n.t
+    if (age > span + 1) continue
+    if (n.t - now > 0.4) continue
+    const x = W - age * pxPerSec
+    if (x < -40 || x > W + 40) continue
+
+    const alpha = n.layer === 5 ? Math.max(0, 1 - age / 3.4) : Math.max(0, 1 - age / 2.2)
+    if (alpha <= 0.01) continue
+
+    const color = n.layer === 5 ? css('--secondary')
+                : n.layer === 4 ? css('--accent')
+                : css('--primary')
+
+    g2d.globalAlpha = alpha * (n.layer === 5 ? 0.7 : 0.95)
+    g2d.fillStyle = color
+
+    const y = yOf(n.midi)
+    const w = Math.max(2.5, n.dur * pxPerSec * 0.5)
+    const h = n.layer === 5 ? 5 : 3.5
+    if (g2d.roundRect) {
+      g2d.beginPath()
+      g2d.roundRect(x, y - h / 2, w, h, h / 2)
+      g2d.fill()
+    } else {
+      g2d.fillRect(x, y - h / 2, w, h)
+    }
+  }
+  g2d.globalAlpha = 1
+}
+
+/* ─────────────────────────── UI ─────────────────────────── */
+
+const LAYER_META = [
+  ['L0', '纸声'], ['L1', '低音'], ['L2', '旋律'],
+  ['L3', '和声'], ['L4', '节拍'], ['L5', '磬铃'],
+]
+
+const layersEl = document.getElementById('layers')
+const layerNodes = {}
+for (const [id, label] of LAYER_META) {
+  const el = document.createElement('div')
+  el.className = 'layer'
+  el.innerHTML = `<i></i>${id} ${label}`
+  layersEl.appendChild(el)
+  layerNodes[+id.slice(1)] = el
+}
+
+function syncLayers() {
+  const active = new Set(cfg ? cfg.layers : [])
+  for (const [k, el] of Object.entries(layerNodes)) {
+    el.classList.toggle('on', active.has(+k))
+  }
+}
+
+const hitTimers = {}
+function hitLayer(id) {
+  const el = layerNodes[id]
+  if (!el) return
+  el.classList.add('hit')
+  clearTimeout(hitTimers[id])
+  hitTimers[id] = setTimeout(() => el.classList.remove('hit'), 130)
+}
+
+const nowName = document.getElementById('nowName')
+const nowMode = document.getElementById('nowMode')
+const nowTag = document.getElementById('nowTag')
+const hint = document.getElementById('hint')
+
+function paintNow() {
+  if (!cfg) return
+  nowName.textContent = cfg.name
+  nowMode.textContent = `${cfg.modeLabel} · ${cfg.bpm} BPM · 根音 MIDI ${cfg.root}`
+  nowTag.textContent = cfg.mortal ? '凡人段' : '修仙段'
+}
+
+function setPressed(btn) {
+  document.querySelectorAll('.preset').forEach(b => b.removeAttribute('aria-pressed'))
+  if (btn) btn.setAttribute('aria-pressed', 'true')
+}
+
+const startBtn = document.getElementById('start')
+const stopBtn = document.getElementById('stop')
+const volEl = document.getElementById('vol')
+
+startBtn.addEventListener('click', () => {
+  initAudio()
+  ctx.resume()
+  playing = true
+  startBtn.disabled = true
+  startBtn.textContent = '运行中'
+  stopBtn.disabled = false
+  document.querySelectorAll('.preset').forEach(b => { b.disabled = false })
+  hint.textContent = '试试从「炼气」直接切到「炼虚」——旋律会整个消失，只剩低音、和声和磬。'
+
+  /* 首次启动必须先有一个场景，否则调度器读到空配置 */
+  if (!cfg) {
+    applyMortal(5)
+    paintNow()
+    const first = document.querySelector('[data-kind="mortal"][data-age="5"]')
+    if (first) first.setAttribute('aria-pressed', 'true')
+  }
+  if (!timer) startLoop()
+})
+
+stopBtn.addEventListener('click', () => {
+  playing = false
+  stopLoop()
+  stopDrone('low', 0.5)
+  stopDrone('pad', 0.5)
+  startBtn.disabled = false
+  startBtn.textContent = '继续'
+  stopBtn.disabled = true
+})
+
+volEl.addEventListener('input', () => {
+  if (!master) return
+  const v = volEl.value / 100
+  master.gain.setTargetAtTime(v === 0 ? 0.0001 : v * 1.55, ctx.currentTime, 0.05)
+})
+
+document.querySelectorAll('.preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!playing) return
+    setPressed(btn)
+    const kind = btn.dataset.kind
+
+    if (kind === 'mortal') {
+      applyMortal(+btn.dataset.age)
+      paintNow()
+      hint.textContent = '注意八音盒的走音 —— 刻意的。80 岁以后只剩骨架，多数玩家就停在这一段。'
+    } else if (kind === 'realm') {
+      const idx = +btn.dataset.realm
+      /* 从凡人切到炼气：走「入道」转折，而不是普通换曲 */
+      if (cfg && cfg.mortal && idx === 0) {
+        enterCultivation()
+        nowName.textContent = '入道 · 炼气'
+        nowMode.textContent = '自然大调 → 五声 · 宫'
+        nowTag.textContent = '转折'
+        hint.textContent = '先静 600ms，一声磬，然后五声才进来 —— 100 岁那一下，是全游戏唯一一次调式换血。'
+        return
+      }
+      applyRealm(idx)
+      paintNow()
+      const c = REALM_CFG[idx]
+      hint.textContent = c.layers.includes(2)
+        ? `${c.name}：${c.modeLabel}，${c.layers.length} 层同时发声。`
+        : `${c.name}：刻意没有主旋律 —— 境界越高越「虚」。`
+    } else if (kind === 'ascend') {
+      ascend()
+      nowName.textContent = '飞升'
+      nowMode.textContent = '宫 · 一次性 12 秒'
+      nowTag.textContent = '终局'
+      hint.textContent = '先硬静音 600ms，再落磬 —— 前面一直有底噪，突然什么都没有，耳朵会自己竖起来。'
+    }
+  })
+})
+
+/* 页面切到后台时挂起，回来恢复 —— 一局要放 50 分钟，不能空转 */
+document.addEventListener('visibilitychange', () => {
+  if (!ctx) return
+  if (document.hidden) {
+    if (playing) stopLoop()
+    ctx.suspend()
+  } else {
+    ctx.resume()
+    if (playing) { nextNoteTime = ctx.currentTime + 0.08; startLoop() }
+  }
+})
+
+resize()
+draw()
+/* rAF 在后台标签会被节流，电平表单独跑一条，保证始终反映真实输出 */
+setInterval(drawMeter, 80)
+
+/**
+ * 离线自检：不需要用户手势，也不依赖声卡。
+ * 用同一套合成函数渲染 4 秒，量出峰值与 RMS —— 有信号说明合成链是对的。
+ */
+async function selfTest() {
+  const el = document.getElementById('selftest')
+  try {
+    const rate = 44100, dur = 4
+    const off = new OfflineAudioContext(2, rate * dur, rate)
+    const saved = { ctx, master, musicBus, reverb, reverbGain }
+
+    ctx = off
+    const g = buildGraph(off)
+    master = g.master
+    musicBus = g.musicBus
+    reverb = g.reverb
+    reverbGain = g.reverbGain
+
+    pluck(293.66, 0.02, 1.4, 0.2, 0)
+    pluck(440.00, 0.42, 1.2, 0.16, 0)
+    bell(587.33, 0.10, 2.6, 0.12)
+
+    const buf = await off.startRendering()
+
+    ctx = saved.ctx
+    master = saved.master
+    musicBus = saved.musicBus
+    reverb = saved.reverb
+    reverbGain = saved.reverbGain
+
+    let peak = 0, sum = 0, n = 0
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+      const d = buf.getChannelData(ch)
+      for (let i = 0; i < d.length; i++) {
+        const v = d[i]
+        const a = v < 0 ? -v : v
+        if (a > peak) peak = a
+        sum += v * v
+        n++
+      }
+    }
+    const rms = Math.sqrt(sum / n)
+    const db = x => (x > 0 ? (20 * Math.log10(x)).toFixed(1) : '−∞')
+    const text = peak > 0.001
+      ? `离线自检：渲染 ${dur}s · 峰值 ${db(peak)} dBFS · RMS ${db(rms)} dBFS · 有信号 ✓`
+      : `离线自检：渲染 ${dur}s · 输出全零 ✗ 合成链有问题`
+    el.textContent = text
+    /* ?selftest=1 时镜像到标题，方便自动化检查读到结果 */
+    if (new URLSearchParams(location.search).has('selftest')) {
+      document.title = text
+    }
+    el.style.display = 'block'
+  } catch (err) {
+    el.textContent = '离线自检失败：' + (err && err.message ? err.message : err)
+  }
+}
+/* 只在 ?selftest=1 时跑：它会临时接管全局 ctx，
+   如果无条件跑，用户恰好在渲染的那几百毫秒里点开始就会丢掉真实上下文。 */
+if (new URLSearchParams(location.search).has('selftest')) selfTest()
+})()
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { properties } from '@remake/data/etc/display'
 import { useAnimatedNumber } from './AnimatedNumber'
+import { playSfx } from '@/audio'
 import './AnimatedProp.css'
 
 interface AnimatedPropProps {
@@ -30,12 +31,14 @@ export function AnimatedProp({ prop, value, grade, interval }: AnimatedPropProps
     /**
      * 属性跨档才做庆祝反馈：每年 +1 的普通变化继续走飘字，
      * 否则多人游戏里每列每年都闪一次，日志就没法看了。
+     * 声音跟视觉用同一个门槛 —— 一年一声会变成噪音。
      */
     useEffect(() => {
         const previous = previousGrade.current
         previousGrade.current = grade
         if (grade <= previous) return
         setGradeUp(true)
+        playSfx('propUp')
         const timer = window.setTimeout(() => setGradeUp(false), 900)
         return () => window.clearTimeout(timer)
     }, [grade])

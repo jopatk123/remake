@@ -1,0 +1,39 @@
+/**
+ * 声音开关的样式。
+ *
+ * 首页的那颗按钮直接复用 .actions > button 的方块样式，这里只补图标颜色；
+ * 对局页的控制条默认会把按钮拉成等宽，所以单独给一颗不参与拉伸。
+ */
+
+.audio-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+
+    &:hover { color: var(--color-primary); }
+
+    &[aria-pressed='false'] {
+        color: var(--color-seal);
+    }
+}
+
+.audio-svg {
+    transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.audio-toggle:active .audio-svg {
+    transform: scale(0.9);
+}
+
+.audio-wave {
+    opacity: 0.9;
+}
+
+/* 对局页控制条：下一年 / 自动演绎是等宽主按钮，声音键只占自己那一格 */
+.screen.play .controls > button.audio-toggle {
+    flex: 0 0 auto;
+    min-width: 2.6rem;
+    padding: 0 0.7rem;
+}

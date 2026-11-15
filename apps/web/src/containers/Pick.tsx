@@ -5,6 +5,7 @@ import { talents as talentData } from '@remake/data'
 import { PullCount, dev } from '@/config'
 import { toastMsg } from '@/toast'
 import { emitPullRareFx } from '@/fx/rare'
+import { playSfx } from '@/audio'
 import Talent from '@/components/Talent'
 import './Pick.css'
 
@@ -18,6 +19,8 @@ export function Pick() {
         const key = pulled.join(',')
         if (shown.current === key) return
         shown.current = key
+        /* 十签依次翻开的纸声，排在音频时间轴上，不会被渲染抖动带偏 */
+        for (let i = 0; i < 6; i += 1) playSfx('flip', 0, i * 0.07)
         emitPullRareFx(pulled, profile)
     }, [pulled, profile])
     const { enabled, min, max } = useSubmitIsEnable()

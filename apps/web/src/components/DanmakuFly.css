@@ -1,0 +1,128 @@
+/* 分场景弹幕：候场 / 结算走大字穿屏，对局推进只留顶部窄轨。
+   整层不拦截点击，也不铺底板，下面的日志始终能读。 */
+
+.danmaku-fly-layer {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* 结算浮层自带 z-index: 20 和毛玻璃，大字要爬到它上面；
+   轨道放到卡片下方的空白带，名次与死因一个字都不挡。 */
+.danmaku-fly-layer.mode-result { z-index: 21; }
+
+.danmaku-fly-track {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    transform: translateY(-50%);
+}
+
+.mode-hero .danmaku-fly-track { top: 50%; }
+.mode-result .danmaku-fly-track { top: 86%; }
+/* 顶栏本身从 0.5rem 起、文字居中在 1.75rem 附近，
+   窄轨贴在视口最上沿，正好从栏的上半截飘过，不碰按钮和年数。 */
+.mode-compact .danmaku-fly-track {
+    top: 0.15rem;
+    transform: none;
+}
+
+.danmaku-fly-item {
+    position: relative;
+    left: 0;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4em;
+    width: max-content;
+    white-space: nowrap;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--player-color);
+    animation: danmaku-fly var(--fly-duration, 5000ms) linear both;
+    will-change: transform;
+}
+
+/* 从视口右外侧进来，整条走完再从左外侧出去。
+   -100% 按自身宽度算，长短句都能完整穿完。 */
+@keyframes danmaku-fly {
+    0%   { opacity: 0; transform: translate3d(100vw, 0, 0); }
+    6%   { opacity: 1; }
+    92%  { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(-100%, 0, 0); }
+}
+
+/* 大字：不铺色块，靠背景色描边把字从名录 / 日志里剥出来 */
+.mode-hero .danmaku-fly-item,
+.mode-result .danmaku-fly-item {
+    font-size: clamp(2.2rem, 5.6vw, 4.2rem);
+    letter-spacing: 0.02em;
+    text-shadow:
+        -0.045em -0.045em 0 var(--base-background-color),
+         0.045em -0.045em 0 var(--base-background-color),
+        -0.045em  0.045em 0 var(--base-background-color),
+         0.045em  0.045em 0 var(--base-background-color),
+        0 0 0.9rem color-mix(in srgb, var(--player-color) 45%, transparent);
+}
+
+.mode-result .danmaku-fly-item {
+    font-size: clamp(1.9rem, 4vw, 3.2rem);
+}
+
+.mode-hero .danmaku-fly-name,
+.mode-result .danmaku-fly-name {
+    flex-shrink: 0;
+    font-size: 0.36em;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--base-text-color);
+    opacity: 0.72;
+    /* text-shadow 会继承，小字再描一层就糊了 */
+    text-shadow: none;
+}
+
+/* 对局推进：顶部一条窄轨小字，半透明、可随时无视 */
+.mode-compact .danmaku-fly-item {
+    gap: 0.4rem;
+    padding: 0.08rem 0.55rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--base-text-color);
+    background: color-mix(in srgb, var(--surface-background) 88%, transparent);
+    border: 0.0625rem solid var(--border-subtle);
+    border-radius: var(--radius-small);
+}
+
+.mode-compact .danmaku-fly-name {
+    flex-shrink: 0;
+    font-weight: 700;
+    color: var(--player-color);
+}
+
+.mode-compact .danmaku-fly-item.me {
+    border-color: color-mix(in srgb, var(--color-primary) 60%, var(--border-subtle));
+}
+
+/* 系统开了「减少动效」：不飞，改成原地停留一小会儿。
+   动画必须显式关掉 —— common.css 会把 animation-duration 压到 0.01ms，
+   那条规则会让 flying 文字瞬间跳到终点而看不见。 */
+.danmaku-fly-layer.reduced .danmaku-fly-item {
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 1 !important;
+    animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .danmaku-fly-item {
+        opacity: 1 !important;
+        animation: none !important;
+    }
+
+    .danmaku-fly-layer.reduced .danmaku-fly-item {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+}

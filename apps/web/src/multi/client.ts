@@ -46,6 +46,21 @@ let state: MultiState = initial
 let socket: WebSocket | null = null
 const listeners = new Set<() => void>()
 
+/**
+ * 「这一刻刚到一条弹幕」的通知，不存历史。
+ *
+ * 全屏飘字层不能去 diff state.danmaku：store 里留着最近几条且不清空，
+ * 房间页 ↔ 对战页来回挂载时会把旧消息当成新消息重新播一遍。
+ */
+const arrivalListeners = new Set<(item: Danmaku) => void>()
+
+export function subscribeDanmakuArrival(listener: (item: Danmaku) => void) {
+    arrivalListeners.add(listener)
+    return () => {
+        arrivalListeners.delete(listener)
+    }
+}
+
 function commit(patch: Partial<MultiState>) {
     state = { ...state, ...patch }
     for (const listener of listeners) listener()
@@ -146,9 +161,12 @@ export function connect(room: string, name: string) {
             }
             case 'danmaku': {
                 const { id, from, name, text, at } = msg
+                const item: Danmaku = { id, from, name, text, at }
                 // 不做定时消失：留着当聊天记录，只有攒够上限才让最旧的被挤掉
-                const next = [...state.danmaku, { id, from, name, text, at }]
+                const next = [...state.danmaku, item]
                 commit({ danmaku: next.slice(-DANMAKU_KEEP) })
+                // 飘字层只认「刚到」这一刻，和上面的聊天记录分开
+                for (const listener of arrivalListeners) listener(item)
                 break
             }
             case 'error':

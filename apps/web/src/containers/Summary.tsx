@@ -5,6 +5,7 @@ import { realmConfig, realmFullName, EndingName } from '@remake/core'
 import { useEndJudge } from '@/hooks/judge'
 import { properties, judgeDisplay } from '@remake/data/etc/display'
 import { toastAchvs, toastMsg } from '@/toast'
+import { playSfx } from '@/audio'
 import Talent from '@/components/Talent'
 import AnimatedNumber from '@/components/AnimatedNumber'
 import './Summary.css'
@@ -165,6 +166,10 @@ function TalentList({ picked, picker }: TalentListProps) {
 export default function Summary() {
     const isClassic = useIsClassic()
     const [locked, picker, end] = useEnd()
+    /* 判词落印：比钟声晚半拍，压在那口钟的余韵上 */
+    useEffect(() => {
+        playSfx('seal', 0, 0.9)
+    }, [])
     const handlePicker = (id: number) => {
         if (!isClassic) {
             toastMsg('名人天赋不可锁定', 'summary-toast')

@@ -3,6 +3,8 @@ import { useInit, useWatcher } from '@/hooks/storage'
 import { useStep, useSetStep, Step } from '@remake/hooks'
 import ToastContainer from '@/toast'
 import RareFxLayer from '@/components/RareFx'
+import DanmakuFlyLayer from '@/components/DanmakuFly'
+import { AudioRoot } from '@/audio'
 import Home from '@/containers/Home'
 import Room from '@/containers/Room'
 import Mode from '@/containers/Mode'
@@ -52,6 +54,6 @@ export function Game() {
     }, [setStep])
     useEffect(() => { if (!inited) init() }, [inited, init])
     if (!inited) return <Loading />
-    return <><Container /><RareFxLayer /><ToastContainer /><Saving active={saving} /></>
+    return <><Container /><RareFxLayer /><DanmakuFlyLayer /><AudioRoot /><ToastContainer /><Saving active={saving} /></>
 }
 export default Game

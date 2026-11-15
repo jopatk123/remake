@@ -11,6 +11,7 @@ import { toastAchvs } from '@/toast/Achv'
 import { emitRareFxFromNext } from '@/fx/rare'
 import { Log, logChapter } from '@/components/LogList'
 import { useInMatch, useMulti } from '@/multi/useMulti'
+import { AudioToggle } from '@/audio'
 import { Battle } from './Battle'
 import './Play.css'
 
@@ -149,6 +150,7 @@ function Solo() {
                         {ending ? `${ending} · 人生总结` : '人生总结'}
                     </button>
                 )}
+                <AudioToggle />
             </div>
         </div>
     )

@@ -1,6 +1,7 @@
 import { useRemake, useFeatures, useGoAchv, useGoThanks, useSetStep, Step } from '@remake/hooks'
 import ThemeToggle from '@/components/ThemeToggle'
 import Github from '@/components/Github'
+import { AudioToggle } from '@/audio'
 import './Home.css'
 
 export default function Home() {
@@ -58,6 +59,7 @@ export default function Home() {
             </div>
             <div className="actions">
                 {features && <Github />}
+                <AudioToggle />
                 <ThemeToggle />
             </div>
         </div>
