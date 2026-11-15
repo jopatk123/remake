@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { usePicked, useEnd, useProfile, useIsClassic } from '@remake/hooks'
+import { useEnd, useProfile, useIsClassic, useReplaced } from '@remake/hooks'
+import { talents as talentData } from '@remake/data'
 import { useSelect } from '@/hooks/select'
 import { useAppFocus } from '@/context/focus'
 import { useEndJudge } from '@/hooks/judge'
@@ -44,7 +45,9 @@ const keys = '1234567890qwertyuiopasdfghjkl;'
 function TalentList({ picked, picker }: TalentListProps) {
     const { isFocused } = useAppFocus()
     const [profile] = useProfile()
-    const talents = usePicked()
+    // 与 web 保持一致：转盘 / 福袋已被消耗，展示开奖后的最终天赋
+    const replaced = useReplaced()
+    const talents = replaced.talents.talents
     const hasInitialized = useRef(false)
     const selected = useSelect(
         Array.from(talents, (id, index) => ({
@@ -86,8 +89,10 @@ export default function Summary() {
     const { isFocused } = useAppFocus()
     const [locked, picker, end] = useEnd()
     const handlePicker = (id: number) => {
-        if (isClassic) picker(id)
-        // else toastMsg('名人天赋不可锁定', 'summary-toast')
+        if (!isClassic) return
+        // 转盘 / 福袋开奖后已消耗，锁定它们没有意义
+        if (talentData.get(id)?.replacement) return
+        picker(id)
     }
     const handleEnd = () => {
         const achievements = end()

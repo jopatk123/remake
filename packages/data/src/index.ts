@@ -2,7 +2,7 @@ import baseEvents from '../dist/event'
 import baseTalents from '../dist/talent'
 import baseAchievements from '../dist/achievement'
 import type { Event } from '../dist/event'
-import type { Talent } from '../dist/talent'
+import type { Talent } from './talent.types'
 import type { Achievement } from '../dist/achievement'
 import { cultivationEvents } from './cultivation/events'
 import {
@@ -79,7 +79,18 @@ events.set(11503, {
 永远不会用谎言伤你。`,
 })
 
-export const talents = merge<Talent>(baseTalents, cultivationTalents)
+// ── 旧链开盒收益覆盖 ────────────────────────────────────────────
+// 10323 只对「神秘的小盒子」开放，是橙色天赋 1048 的全部数值收益。
+// 原效果合计 11 点，作为橙色偏低；补到 20 点（五维各 +5）。
+events.set(10323, {
+    ...events.get(10323)!,
+    effect: { CHR: 5, INT: 5, STR: 5, SPR: 5 },
+})
+
+export const talents = merge<Talent>(
+    baseTalents as unknown as Map<number, Talent>,
+    cultivationTalents,
+)
 
 // ── 橙色天赋效果覆盖 ────────────────────────────────────────────
 // 基础天赋仍由 xlsx → dist 生成，这里在合并之后统一覆盖，
@@ -150,13 +161,45 @@ const talentOverrides: Record<number, Partial<Talent>> = {
         reviveRequireEvent: [10679, 10680, 10681],
     },
     // 转世重修：仅渡劫失败时重生，体质大损、年龄回退
+    // 体质惩罚从 -1000 收到 -50：原值配合「化神之资」的负属性钳制等于
+    // 零代价重生，且没有钳制的角色会直接跌到 -980，惩罚失真。
     1134: {
-        description: '渡劫失败重生',
+        description: '渡劫失败重生，体质大损、年岁回退',
         revives: 1,
         revivePriority: 7,
         reviveEvent: 20409,
         reviveOnTribulation: true,
-        reviveEffect: { STR: -1000, AGE: -500 },
+        reviveEffect: { STR: -50, AGE: -500 },
+    },
+    // 仲夏夜之梦：原数值是 114509 的梗，会让总评与道心评级直接爆表，
+    // 作为蓝色「百世」的 1/8 隐藏结果，收敛到紫色档位的 +8。
+    2032: {
+        description: '道心+8，余韵悠长',
+        effect: { SPR: 8 },
+    },
+    // 太古遗脉：+30 全属性（150 点）是橙色池第二名的 3.5 倍，
+    // 收敛到 +10（50 点），仍是最强的入道爆发，但不再碾压其他橙色。
+    3019: {
+        description: '入道炼气时全属性+10',
+        entryAll: { value: 10 },
+    },
+    // 转盘类：描述写清「消耗本体」，避免玩家以为是紫色天赋而低估，
+    // 也避免结算页锁定一个开奖后就不存在的空壳。
+    1144: {
+        description: '消耗此天赋，随机获得一个橙色天赋',
+    },
+    2025: {
+        description: '消耗此天赋，随机获得一个橙色天赋',
+    },
+    // 神秘的小盒子：数值收益全在 10323 开盒事件里，描述写清价值
+    1048: {
+        description: '100岁时开启，获得练气法门与全属性+5',
+    },
+    // 叠加态：原本是 exclusive 且没有任何替换表指向它，属于永远拿不到
+    // 的死数据。放回紫色池，让它成为「赌橙色或体质-10」的高风险选项。
+    2016: {
+        exclusive: false,
+        description: '消耗此天赋，变成橙色天赋或体质-10',
     },
 }
 
@@ -164,6 +207,12 @@ for (const [id, patch] of Object.entries(talentOverrides)) {
     const key = Number(id)
     talents.set(key, { ...talents.get(key)!, ...patch })
 }
+
+// ── 清理不可达的占位天赋 ────────────────────────────────────────
+// 2009–2013 是五个完全相同的「白色转盘」，exclusive 且没有任何替换表
+// 指向它们，玩家永远拿不到；它们却会计入天赋收集度的分母。功能已由
+// 1142 蓝色转盘覆盖，这里直接移除，保证收集度可以真的走到 100%。
+for (const id of [2009, 2010, 2011, 2012, 2013]) talents.delete(id)
 
 // ── 复活日志事件 ─────────────────────────────────────────────────
 const reviveEvents: [number, string][] = [
@@ -202,5 +251,5 @@ export { default as characters } from '../dist/character'
 export * from '../dist/event'
 export * from '../dist/specialthanks'
 export { default as specialThanks } from '../dist/specialthanks'
-export * from '../dist/talent'
+export * from './talent.types'
 export * from './cultivation'

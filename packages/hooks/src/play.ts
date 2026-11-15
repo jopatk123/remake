@@ -4,7 +4,7 @@ import { useConfig, useProfile, useReplaced, useAlloc } from '.'
 import { useTalentReset, useAllocReset } from '.'
 import { start, next, summary, end } from '@remake/core'
 import type { GameState, Properties, NextResult } from '@remake/core'
-import type { Talent } from '@remake/data'
+import { talents as talentData, type Talent } from '@remake/data'
 
 export enum Step {
     Idle = 'idle',
@@ -162,6 +162,9 @@ export const useEnd = () => {
         (talent: Talent['id']) => {
             setLocked(prev => {
                 if (!isClassic) return prev
+                // 转盘 / 福袋类在开奖时就被消耗，锁定它们等于锁定一个空壳。
+                // 真正该带进下局的是开出来的天赋，不是转盘本身。
+                if (talentData.get(talent)?.replacement) return prev
                 if (prev.has(talent)) {
                     const next = new Set(prev)
                     next.delete(talent)

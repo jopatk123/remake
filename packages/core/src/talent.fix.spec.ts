@@ -37,11 +37,12 @@ const allocation = {
 }
 
 describe('天赋 / 事件修复', () => {
-    test('白色转盘 grade=0 不再空开', () => {
-        const result = replacement([2009])
-        const chain = result.chains.get(2009)
+    test('低阶转盘不再空开', () => {
+        // 白色占位转盘 2009–2013 已移除，统一由 1142 蓝色转盘承担
+        const result = replacement([1142])
+        const chain = result.chains.get(1142)
         expect(chain?.length).toBeGreaterThan(0)
-        expect(talents.get(chain![0]!)?.grade).toBe(0)
+        expect(talents.get(chain![0]!)?.grade).toBe(1)
     })
 
     test('突破 +20% 天赋互斥', () => {
@@ -58,7 +59,9 @@ describe('天赋 / 事件修复', () => {
         state = applyCultivationEffects(state, 50000)
         expect(state.cultivation.started).toBe(true)
         expect(state.cultivation.path).toBe(CultivationPath.Standard)
-        expect(state.props.current.intelligence).toBe(35)
+        // 入道 +10，初始 5 → 15；仍高于脱胎换骨的 10 点保底
+        expect(state.props.current.intelligence).toBe(15)
+        expect(talents.get(3019)?.entryAll?.value).toBe(10)
         expect(talents.get(3019)?.entryAll?.path).toBeUndefined()
     })
 

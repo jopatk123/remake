@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { usePicked, useEnd, useProfile, useIsClassic, useGameState, useSummary } from '@remake/hooks'
+import { useEnd, useProfile, useIsClassic, useGameState, useSummary, useReplaced } from '@remake/hooks'
+import { talents as talentData } from '@remake/data'
 import { realmConfig, realmFullName, EndingName } from '@remake/core'
 import { useEndJudge } from '@/hooks/judge'
 import { properties, judgeDisplay } from '@remake/data/etc/display'
@@ -120,7 +121,10 @@ interface TalentListProps {
 }
 function TalentList({ picked, picker }: TalentListProps) {
     const [profile] = useProfile()
-    const talents = usePicked()
+    // 展示替换后的最终天赋：转盘 / 福袋在开奖时已被消耗，
+    // 这里应该显示开出来的结果，而不是选卡页勾选的原件。
+    const replaced = useReplaced()
+    const talents = replaced.talents.talents
     const hasInitialized = useRef(false)
     useEffect(() => {
         if (!profile.locked) return
@@ -162,8 +166,15 @@ export default function Summary() {
     const isClassic = useIsClassic()
     const [locked, picker, end] = useEnd()
     const handlePicker = (id: number) => {
-        if (isClassic) picker(id)
-        else toastMsg('名人天赋不可锁定', 'summary-toast')
+        if (!isClassic) {
+            toastMsg('名人天赋不可锁定', 'summary-toast')
+            return
+        }
+        if (talentData.get(id)?.replacement) {
+            toastMsg('转盘 / 福袋开奖后已消耗，不能锁定', 'summary-toast')
+            return
+        }
+        picker(id)
     }
     const handleEnd = () => {
         const achievements = end()

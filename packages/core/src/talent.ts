@@ -64,7 +64,9 @@ function talentRateWithAddition(
     }
     for (const [g, addition] of rate.entries()) {
         const b = base.get(g)
-        if (!b) throw new Error(`talent: base rate for grade ${g} is missing`)
+        // 用 == null 而不是 !b：0 权重是合法的「屏蔽该稀有度」写法
+        if (b == null)
+            throw new Error(`talent: base rate for grade ${g} is missing`)
         rate.set(g, Math.max(b * addition, 0))
     }
     return rate
@@ -83,7 +85,7 @@ export function pull(
     const rate = Array.from(
         talentRateWithAddition(options.rate, profile).entries(),
     )
-    const result = []
+    const result: Talent['id'][] = []
     const map = new Map(Grades.map(g => [g, new Set(GradeMap.get(g))]))
     const usedGroups = new Set<string>()
     if (profile.locked) {
@@ -101,7 +103,10 @@ export function pull(
         if (set.size === 0) continue
         const candidates = Array.from(set).filter(id => {
             const { group } = talents.get(id)!
-            return !group || !usedGroups.has(group)
+            if (group && usedGroups.has(group)) return false
+            // 抽卡阶段也遵守互斥表：否则 10 连里会同时出现
+            // 「生而为男 / 生而为女」这类只能二选一的废牌。
+            return exclude(id, result) == null
         })
         if (candidates.length === 0) continue
         const id = pick(candidates, rng)!
@@ -165,6 +170,9 @@ export function replacement(
         const chain = chainReplace(talent, set, rng)
         if (!chain) continue
         chains.set(talent, chain)
+        // 转盘 / 福袋类天赋开奖后消耗本体：否则「紫色转盘」会同时留下
+        // 转盘和它开出的橙色，等于白赚一个天赋位和一份收集度。
+        set.delete(talent)
         chain.forEach(t => set.add(t))
     }
     return { talents: set, chains }
@@ -281,7 +289,9 @@ export function trigger(
                 if (effect.SPR) pe.spirit = effect.SPR
                 if (effect.RND) {
                     const key = pick(EffectRandomProperties, rng)!
-                    pe[key] = (pe[key] ?? 0) || effect.RND
+                    // 用叠加而不是 ||：同一天赋若同时带固定属性和 RND，
+                    // 旧写法会直接把随机加成吞掉。
+                    pe[key] = (pe[key] ?? 0) + effect.RND
                 }
             }
             if (randomPerStat) {

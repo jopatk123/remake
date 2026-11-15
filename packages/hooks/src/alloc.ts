@@ -62,9 +62,14 @@ export const useAllocBefore = () => {
     const { total } = usePoints()
     const isClassic = useIsClassic()
     const isPositive = total >= 0
+    // 可分配资质只有 4 项，单项上限必须至少容纳 total / 4。
+    // 否则「天命 +20」叠加超凡 / 天赋异禀时，总点数会超过 4 × 10，
+    // 剩余点数永远分不完，开始按钮会一直卡在 pending。
+    const needed = Math.ceil(Math.abs(total) / 4)
+    const maxLimit = Math.max(allocate, needed)
     const limit = isClassic
-        ? allocate
-        : Math.min(Math.ceil(Math.abs(total) / 2), allocate) *
+        ? maxLimit
+        : Math.min(Math.ceil(Math.abs(total) / 2), maxLimit) *
           (isPositive ? 1 : -1)
     return { total, limit, isPositive, isClassic }
 }
