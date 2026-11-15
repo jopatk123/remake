@@ -326,11 +326,22 @@ export function realmConfig(realm: number): RealmConfig {
     return REALMS[Math.max(0, Math.min(LAST_REALM, realm))]!
 }
 
+export const MORTAL_TITLE = '凡人'
+
 export function realmTitle(realm: number, minor: number): string {
     if (realm >= LAST_REALM) return '飞升'
     const c = realmConfig(realm)
     const index = Math.max(0, Math.min(c.minorNames.length - 1, minor))
     return `${c.name}·${c.minorNames[index]}`
+}
+
+/** 未入道（含夺舍后重做凡人）显示「凡人」，入道后才用境界小阶段 */
+export function displayRealmTitle(
+    started: boolean,
+    realm: number,
+    minor: number,
+): string {
+    return started ? realmTitle(realm, minor) : MORTAL_TITLE
 }
 
 export function realmFullName(realm: number, minor: number): string {
@@ -434,7 +445,7 @@ export function snapshot(
         minor: state.minor,
         progress: Math.floor(state.progress),
         progressMax: progressMax(state.realm),
-        title: realmTitle(state.realm, state.minor),
+        title: displayRealmTitle(state.started, state.realm, state.minor),
         daos: state.daos.length,
         tribulation: state.tribulation,
         trials: state.tribulationStage,

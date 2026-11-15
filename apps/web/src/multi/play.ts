@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { summary as score } from '@remake/core/state'
-import { realmTitle, type NextResult } from '@remake/core'
+import { displayRealmTitle, type NextResult } from '@remake/core'
 import { useGameState, useLogs, useProfile } from '@remake/hooks'
 import { LOG_LIMIT, type LogLine } from '@remake/multi'
 import * as client from './client'
@@ -9,7 +9,7 @@ import { useInMatch, useMulti } from './useMulti'
 import { emitRareFxFromNext } from '@/fx/rare'
 
 /**
- * 自动推进：服务端按节拍发 tick，收到就在本地过一年。
+ * 推进：服务端发 tick（手动点「下一年」或自动演绎的节拍），收到就在本地过一年。
  *
  * 注意这里一次只推进一年、靠 `next` 换新再进下一轮。原因是 useNext 的闭包
  * 拿的是上一次的 state，在同一个 effect 里连调两次会把同一年算两遍。
@@ -96,10 +96,13 @@ export function useMultiMatch(
             logs: lines,
             talents: [...state.talents],
             death: finished ? deathEventId(lines) : null,
-            realm: state.cultivation.realm,
-            realmTitle: state.cultivation.started
-                ? realmTitle(state.cultivation.realm, state.cultivation.minor)
-                : undefined,
+            realm: state.cultivation.started ? state.cultivation.realm : 0,
+            // 未入道也要带「凡人」，否则夺舍后服务端会一直顶着上一世的境界文案
+            realmTitle: displayRealmTitle(
+                state.cultivation.started,
+                state.cultivation.realm,
+                state.cultivation.minor,
+            ),
             ending: state.ending,
         })
     }, [active, state, logs, mp.round, mp.room, mp.id])

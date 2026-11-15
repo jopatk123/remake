@@ -24,5 +24,13 @@ export type {
     CultivationSnapshot,
     EndingType,
 } from '@remake/data'
-export { REALMS, TUNING, realmTitle, realmFullName, realmConfig } from '@remake/data'
+export {
+    REALMS,
+    TUNING,
+    realmTitle,
+    realmFullName,
+    realmConfig,
+    displayRealmTitle,
+    MORTAL_TITLE,
+} from '@remake/data'
 export { EndingName, CultivationPathName } from '@remake/data'

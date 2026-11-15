@@ -1,7 +1,8 @@
 /**
  * 修仙进度条。
  *
- * 100 岁入道后才出现；显示「境界 + 小阶段 + 修为进度 + 大道 / 天劫准备」。
+ * 入道前（含夺舍后重做凡人）显示「凡人」；入道后显示
+ * 「境界 + 小阶段 + 修为进度 + 大道 / 天劫准备」。
  * 单人页和多人游戏里「自己」那一列共用这一套，紧凑模式只收起次要信息，
  * 保证不遮挡日志（延续项目里「文字可读性优先」的约定）。
  */
@@ -12,6 +13,7 @@ import { playSfx } from '@/audio'
 import {
     realmConfig,
     realmTitle,
+    displayRealmTitle,
     TUNING,
     CultivationPathName,
     EndingName,
@@ -135,7 +137,26 @@ export function CultivationBar({ compact = false }: { compact?: boolean }) {
 
     if (!state) return null
     const c = state.cultivation
-    if (!c.started) return null
+    // 开局年龄还是 -1，命书未落笔时不占位置；入道前 / 夺舍后都显示凡人。
+    if (!c.started) {
+        if (state.props.current.age < 0) return null
+        return (
+            <div
+                className={`cultivation-bar grade-0 mortal ${compact ? 'compact' : ''}`}
+                title="尚未入道，仍是凡胎"
+            >
+                <div className="cultivation-head">
+                    <span className="cultivation-label">境界</span>
+                    <strong className="cultivation-title font-mono">
+                        {displayRealmTitle(false, c.realm, c.minor)}
+                    </strong>
+                </div>
+                <div className="cultivation-meta font-mono">
+                    <span>百岁后再入道</span>
+                </div>
+            </div>
+        )
+    }
 
     const cfg = realmConfig(c.realm)
     const ascended = c.realm >= 9

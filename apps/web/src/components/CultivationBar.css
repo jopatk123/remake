@@ -97,6 +97,14 @@
         }
     }
 
+    &.mortal {
+        border-color: color-mix(in srgb, var(--text-muted) 35%, transparent);
+
+        .cultivation-title {
+            color: var(--text-color);
+        }
+    }
+
     &.ascended {
         border-color: var(--grade-color);
         box-shadow: 0 0 1.25rem color-mix(in srgb, var(--grade-color) 35%, transparent);

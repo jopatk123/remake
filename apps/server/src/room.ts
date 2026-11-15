@@ -345,8 +345,11 @@ export class Room {
         // 修仙进度只做类型校验后存着：飞升决定冠军归属，但不提前收摊
         if (typeof payload.realm === 'number' && Number.isFinite(payload.realm))
             player.realm = Math.max(0, Math.min(9, Math.round(payload.realm)))
-        if (typeof payload.realmTitle === 'string')
-            player.realmTitle = payload.realmTitle.slice(0, 24)
+        if (typeof payload.realmTitle === 'string') {
+            const title = payload.realmTitle.trim().slice(0, 24)
+            // 空串表示回到凡人：必须清掉上一世的「元婴 / 炼气」，不能缺字段就沿用
+            player.realmTitle = title || null
+        }
         player.lastSyncAt = Date.now()
         // 有结局就等于这一生跑完了：不再要求客户端另外把 alive 打成 false，
         // 否则飞升包丢了 alive 字段时整房会空转到回合上限。

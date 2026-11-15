@@ -5,8 +5,8 @@
  * 只有属性和最近若干年的日志。两边用的是同一套日志组件，所以
  * 「别人看你」和「你看别人」长得一样。
  *
- * 推进是全自动的：不用点“继续”，服务端按节拍往下走。想停下来读文字时
- * 谁都可以按“暂停”，再按一次就继续；嫌快嫌慢谁都能调节拍。
+ * 全员进局后先停着。谁都可以点「下一年」让全房间过一年，
+ * 谁都可以点「自动演绎」按节拍跑；嫌快嫌慢谁都能调节拍。
  *
  * 所有人结束后不马上切页面：先在结算浮层上播几秒倒计时，把名次和死因看完，
  * 倒计时归零、服务端把房间收回大厅时才退回房间页。
@@ -26,6 +26,7 @@ import {
     disconnect,
     setPaused as sendPaused,
     setSpeed as sendSpeed,
+    step as sendStep,
 } from '@/multi/client'
 import { copyText } from '@/multi/clipboard'
 import { useMultiMatch } from '@/multi/play'
@@ -196,8 +197,8 @@ function MyColumn({
         : ended
           ? `${ending ? ENDING_NOTICE[ending] : '此生已尽'} · 等其他人跑完…`
           : paused
-            ? '已暂停'
-            : '自动推进中…'
+            ? '已停笔'
+            : '自动演绎中…'
     const classes = [
         'battle-col me',
         `player-tone-${tone}`,
@@ -260,8 +261,8 @@ function PeerColumn({
             ? ENDING_NOTICE[ending] ?? '已结束'
             : '已离线'
         : paused
-          ? '已暂停'
-          : '自动推进中…'
+          ? '已停笔'
+          : '自动演绎中…'
     const classes = [
         'battle-col peer',
         `player-tone-${tone}`,
@@ -277,7 +278,10 @@ function PeerColumn({
                     {leading && <span className="leader-tag">领先</span>}
                 </span>
                 <RareTalents ids={player.talents ?? []} />
-                <span className="age font-mono">{player.age}岁</span>
+                <span className="age font-mono">
+                    {player.realmTitle ? `${player.realmTitle} · ` : ''}
+                    {player.age}岁
+                </span>
             </header>
             <PropRow props={player.props} interval={interval} />
             <ul className="logs battle-logs hide-scrollbar" ref={ref}>
@@ -344,6 +348,10 @@ export function Battle() {
         if (!room) return
         sendPaused(!room.paused)
     }, [room])
+    const handleStep = useCallback(() => {
+        if (!room || !room.paused) return
+        sendStep()
+    }, [room])
     const handleLeave = useCallback(() => {
         disconnect()
         goHome()
@@ -383,7 +391,7 @@ export function Battle() {
                   b.summary - a.summary,
           )[0]?.id
         : null
-    /** 还在等别人选天赋时，「继续」没有意义，按钮先不出现；收摊那一帧也不给按 */
+    /** 还在等别人选天赋时，落笔没有意义；收摊那一帧也不给按 */
     const canToggle = room.phase === 'playing' && waiting.length === 0
 
     return (
@@ -411,13 +419,27 @@ export function Battle() {
                 </span>
                 <span className="battle-spacer" />
                 {canToggle && (
-                    <button
-                        className="primary"
-                        onClick={handlePause}
-                        aria-pressed={room.paused}
-                    >
-                        {room.paused ? '继续' : '暂停'}
-                    </button>
+                    <>
+                        <button
+                            className="primary"
+                            onClick={handleStep}
+                            disabled={!room.paused}
+                            title={
+                                room.paused
+                                    ? '全房间过一年，任何人都能点'
+                                    : '先停笔才能点下一年'
+                            }
+                        >
+                            下一年
+                        </button>
+                        <button
+                            className="secondary"
+                            onClick={handlePause}
+                            aria-pressed={!room.paused}
+                        >
+                            {room.paused ? '自动演绎' : '停笔'}
+                        </button>
+                    </>
                 )}
                 <button className="secondary" onClick={copyLink}>
                     复制邀请
@@ -443,7 +465,9 @@ export function Battle() {
                 <div className="battle-pause">
                     {waiting.length > 0
                         ? `等待 ${waiting.join('、')} 完成天赋与加点…`
-                        : `${room.pausedBy ?? '有人'} 暂停了对局，任何一个人都可以点「继续」`}
+                        : room.pausedBy
+                          ? `${room.pausedBy} 停笔了，任何人都可以点「下一年」或「自动演绎」`
+                          : '全员已就位。点「下一年」过一年，或点「自动演绎」开跑'}
                 </div>
             )}
 

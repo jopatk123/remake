@@ -204,17 +204,20 @@ export function applyCultivationEffects(
         // 入道瞬间：太古遗脉 +30，并执行脱胎换骨
         if (!wasStarted && d.started) applyEntryGrowth(draft)
 
-        if (effect?.CULT) d.progress = Math.max(0, d.progress + effect.CULT)
-        if (effect?.REALM) {
-            d.realm = Math.max(
-                0,
-                Math.min(LAST_REALM, d.realm + effect.REALM),
-            )
-            if (d.realm === LAST_REALM) d.bottleneck = false
-        }
-        if (effect?.MINOR) {
-            const max = realmConfig(d.realm).minorNames.length - 1
-            d.minor = Math.max(0, Math.min(max, d.minor + effect.MINOR))
+        // 凡人阶段不吃修为 / 境界：夺舍后若童年事件带 CULT，会把炼气读条悄悄抬起来。
+        if (d.started) {
+            if (effect?.CULT) d.progress = Math.max(0, d.progress + effect.CULT)
+            if (effect?.REALM) {
+                d.realm = Math.max(
+                    0,
+                    Math.min(LAST_REALM, d.realm + effect.REALM),
+                )
+                if (d.realm === LAST_REALM) d.bottleneck = false
+            }
+            if (effect?.MINOR) {
+                const max = realmConfig(d.realm).minorNames.length - 1
+                d.minor = Math.max(0, Math.min(max, d.minor + effect.MINOR))
+            }
         }
 
         const daoName =
@@ -231,7 +234,7 @@ export function applyCultivationEffects(
         if (flag && !d.flags.includes(flag)) d.flags.push(flag)
 
         // 旧链只进不退：新体系已经走到更高境界时，不被旧事件拉回去
-        if (legacyRealm) {
+        if (legacyRealm && d.started) {
             const [r, m] = legacyRealm
             if (r > d.realm || (r === d.realm && m > d.minor)) {
                 d.realm = r
@@ -529,18 +532,25 @@ function applyAmbushInjury(draft: GameState) {
 }
 
 /**
- * 夺舍重生：五维归 10、年龄归 1，境界清零。
+ * 夺舍重生：五维归 10、年龄归 1，境界清零，重新做回凡人。
+ *
+ * 必须把 started 关掉：否则修为条仍按炼气读条、年度修为继续涨，
+ * 和「钻进周岁婴孩」的纪事对不上。百岁后再走一遍入道。
  *
  * 天赋 / 大道 / 成就 / 长期标记全部保留——「带着记忆重开」，
  * 所以这里不碰 daos、flags、talents、achievements 与 rateBonus。
  */
 function applyAmbushRebirth(draft: GameState) {
     const d = draft.cultivation
+    d.started = false
+    d.startAge = 0
     d.realm = 0
     d.minor = 0
     d.progress = 0
     d.bottleneck = false
     d.decay = 0
+    d.breakthroughs = 0
+    d.failures = 0
     d.tribulation = 0
     d.tribulationStage = 0
     d.tribulationBaseline = 0
