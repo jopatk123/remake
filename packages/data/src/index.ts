@@ -87,6 +87,21 @@ events.set(10323, {
     effect: { CHR: 5, INT: 5, STR: 5, SPR: 5 },
 })
 
+// ── 晚年「衰老叙述」补体质门槛 ──────────────────────────────────
+// 这批旧表事件是按 0–10 的属性尺度写的，城市 / 美国线有两条漏了 STR 条件；
+// 灵根与修仙会把体质拉到几十点，于是「体质 66 还身体越来越差」。
+// 农村版 10292 本来就有 (STR<6)，11308 是同一批文案的漏写，这里只补门槛。
+// 11307 摔跤属于意外，不该再扣体质；它的致死分支仍是 STR<5，保持不动。
+const elderGates: Record<number, Partial<Event>> = {
+    11308: { include: '(STR<8)&(EVT?[10010])' },
+    10790: { include: '(STR<8)&(EVT?[10011,10010])' },
+    11307: { effect: undefined },
+}
+for (const [id, patch] of Object.entries(elderGates)) {
+    const key = Number(id)
+    events.set(key, { ...events.get(key)!, ...patch })
+}
+
 export const talents = merge<Talent>(
     baseTalents as unknown as Map<number, Talent>,
     cultivationTalents,
