@@ -18,6 +18,7 @@ import {
     MIN_SPEED,
     RESULT_MS,
     ROUND_MS,
+    STEP_GAP,
     SYNC_STALL_MS,
 } from '@remake/multi'
 
@@ -115,11 +116,10 @@ function endingScore(ending: EndingType | null, alive: boolean): number {
  * 一个房间就是一组独立的人生赛跑。
  *
  * 开局后先停在原地，等每个人选完天赋、分完点数、进入对战页并发来 enter。
- * 全体存活玩家都报到后才发第一拍；有人还没准备好就一直等，不会强行开跑。
+ * 全体存活玩家都报到后仍然先停着；有人还没准备好就一直等，不会强行开跑。
  *
- * 推进是全自动的：服务端按 interval 的节拍发 tick，各端本地过一年再 sync 回来。
- * 谁都可能想停下来读一眼文字，所以 pause 不做权限 —— 任何人按下去都停，
- * 任何人再按一次都继续，这是唯一不会把人卡住的规则。节拍同理，谁都能调。
+ * 齐了之后任何人点 step 就全房间过一年；点「自动演绎」才按 interval 发 tick。
+ * pause 不做权限 —— 任何人停笔、任何人再开跑。节拍同理，谁都能调。
  *
  * 所有人跑完（阵亡 / 飞升 / 离世 / 转世）后不立刻收摊：先停在 over 阶段
  * 播 RESULT_MS（默认 5 秒）的结算倒计时，让对战页把名次和死因看完，
@@ -131,9 +131,11 @@ export class Room {
     round = 0
     private players = new Map<string, Player>()
     private hostId: string | null = null
-    /** 有人按了暂停 */
-    private paused = false
+    /** 停笔中：全员进局后的默认状态，也是有人按了停笔 */
+    private paused = true
     private pausedBy: string | null = null
+    /** 上一次手动过年的时间，用来吞掉同时按下的两拍 */
+    private lastStepAt = 0
     /** 开局后等人进入对局（选天赋、分配属性要花点时间） */
     private waiting = false
     /** 已发来 enter 的玩家：集齐所有存活玩家才开跑 */
@@ -230,8 +232,9 @@ export class Room {
         this.phase = 'playing'
         this.round = 0
         this.match += 1
-        this.paused = false
+        this.paused = true
         this.pausedBy = null
+        this.lastStepAt = 0
         this.waiting = true
         this.entered.clear()
         // 上一局的排名只留到这一局开始，开了就收起来
@@ -255,13 +258,31 @@ export class Room {
         this.broadcastRoom()
     }
 
-    /** 任意玩家都能暂停 / 继续 */
+    /** 任意玩家都能停笔 / 开自动演绎 */
     setPaused(id: string, on: boolean) {
         const player = this.players.get(id)
         if (!player || this.phase !== 'playing') return
+        if (this.waiting) return
         this.paused = on
         this.pausedBy = on ? player.name : null
+        // 停笔读字可能超过上报超时；重新开跑时把计时拨回，免得第一拍把整房判死
+        if (!on) this.touchSync()
         this.broadcastRoom()
+    }
+
+    /**
+     * 手动过一年。只在停笔、且已经等齐之后生效。
+     * 自动演绎开着时丢掉；连点按 STEP_GAP 只认一拍。
+     */
+    step(id: string) {
+        const player = this.players.get(id)
+        if (!player || this.phase !== 'playing') return
+        if (this.waiting || !this.paused) return
+        const now = Date.now()
+        if (now - this.lastStepAt < STEP_GAP) return
+        this.lastStepAt = now
+        this.touchSync()
+        this.advance()
     }
 
     /** 任意玩家都能调节拍，全房间跟着变 */
@@ -380,6 +401,15 @@ export class Room {
         this.clock = setInterval(() => this.tick(), this.interval)
     }
 
+    /** 拨回上报计时：长时间停笔后再走，不算「卡住没上报」 */
+    private touchSync() {
+        const now = Date.now()
+        for (const player of this.players.values()) {
+            if (!player.alive || !player.connected) continue
+            player.lastSyncAt = now
+        }
+    }
+
     private stopClock() {
         if (!this.clock) return
         clearInterval(this.clock)
@@ -394,11 +424,17 @@ export class Room {
     }
 
     private tick() {
-        if (this.phase !== 'playing') return
         if (this.waiting || this.paused) return
+        this.advance(true)
+    }
+
+    /** 真正过一年。自动节拍才检查上报超时；手动点下一年不算卡住 */
+    private advance(checkStall = false) {
+        if (this.phase !== 'playing') return
+        if (this.waiting) return
         this.round++
         this.broadcast({ t: 'tick', round: this.round, match: this.match })
-        this.applyStall()
+        if (checkStall) this.applyStall()
         // 人生不再有 500 岁上限，房间层面留一个很长的回合保护，
         // 免得极端情况下（谁都没飞升也没死）一局永远收不了摊。
         if (this.checkOver()) return
@@ -423,14 +459,16 @@ export class Room {
         }
     }
 
-    /** 活人都完成准备并进入对局后才开始跑；有人没报到就一直等 */
+    /** 活人都完成准备并进入对局后才允许落笔；有人没报到就一直等 */
     private refreshWaiting() {
         if (this.phase !== 'playing' || !this.waiting) return
         const alive = this.alivePlayers()
         if (alive.length === 0) return
         if (!alive.every(p => this.entered.has(p.id))) return
         this.waiting = false
-        console.log(`[${this.id}] 全员进入对局，开始推进`)
+        this.paused = true
+        this.pausedBy = null
+        console.log(`[${this.id}] 全员进入对局，等待落笔`)
     }
 
     /** 所有人跑完后结算；返回 true 表示刚结算完、房间视图已经广播过了 */
@@ -508,8 +546,9 @@ export class Room {
         }
         this.phase = 'lobby'
         this.round = 0
-        this.paused = false
+        this.paused = true
         this.pausedBy = null
+        this.lastStepAt = 0
         this.waiting = false
         this.entered.clear()
         for (const player of this.players.values()) {

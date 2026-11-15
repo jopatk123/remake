@@ -1,13 +1,13 @@
 /**
  * 端到端：拿真实的前端存储模块去打真实的中继服务器。
  *
- * 只验证「客户端状态机」这一段（连接→入房→开局→自动推进→暂停→阵亡→结算），
+ * 只验证「客户端状态机」这一段（连接→入房→开局→手动过年→自动演绎→阵亡→结算），
  * UI 层只是按钮调这些方法，所以这段通了，联调就基本稳了。
  *
  * 中继由脚本自己起，直接 `pnpm test:client` 即可。
  */
 import { WebSocket } from 'ws'
-import { DANMAKU_GAP } from '@remake/multi'
+import { DANMAKU_GAP, STEP_GAP } from '@remake/multi'
 import { RESULT, startRelay, TICK } from './relay'
 
 const relay = await startRelay()
@@ -104,7 +104,7 @@ async function main() {
     ok('开局后先停着等人进入', client.getSnapshot().room?.paused === true)
     ok('局次已下发', (client.getSnapshot().room?.match ?? 0) >= 1)
 
-    console.log('\n[自动推进]')
+    console.log('\n[落笔与自动演绎]')
     client.sync({ age: 0, life: 5, alive: true, summary: 0, props: PROPS, logs: [] })
     peer.sync()
     await sleep(250)
@@ -112,23 +112,36 @@ async function main() {
     client.enter()
     peer.enter()
     await sleep(TICK * 3)
-    ok('两人都报到后不再等', client.getSnapshot().room?.paused === false)
-    ok('没人点继续也推进了', client.getSnapshot().round >= 1)
-    ok('陪练也收到同一节拍', peer.ticks.length > 0)
+    ok('两人都报到后仍停着', client.getSnapshot().room?.paused === true)
+    ok('没人落笔就不推进', client.getSnapshot().round === 0)
 
-    console.log('\n[暂停与继续]')
+    client.step()
+    peer.send({ t: 'step' })
+    await sleep(150)
+    ok('点下一年后过了第一年', client.getSnapshot().round === 1)
+    ok('陪练也收到同一拍', peer.ticks.length === 1)
+    await sleep(STEP_GAP + 50)
+    peer.send({ t: 'step' })
+    await sleep(150)
+    ok('另一个人也能点下一年', client.getSnapshot().round === 2)
+
+    client.setPaused(false)
+    await sleep(TICK * 3)
+    ok('点自动演绎后按节拍走', client.getSnapshot().round > 2)
+    ok('自动开着时没停笔', client.getSnapshot().room?.paused === false)
+
     client.setPaused(true)
     await sleep(150)
-    ok('暂停标记同步到本地', client.getSnapshot().room?.paused === true)
-    ok('知道是谁按的', client.getSnapshot().room?.pausedBy === '甲')
+    ok('停笔标记同步到本地', client.getSnapshot().room?.paused === true)
+    ok('知道是谁停的', client.getSnapshot().room?.pausedBy === '甲')
     const frozen = client.getSnapshot().round
     await sleep(TICK * 4)
-    ok('暂停期间不推进', client.getSnapshot().round === frozen)
+    ok('停笔期间不推进', client.getSnapshot().round === frozen)
 
     peer.send({ t: 'pause', on: false })
     await sleep(TICK * 3)
-    ok('另一个人点继续也能恢复', client.getSnapshot().round > frozen)
-    ok('暂停标记已清掉', client.getSnapshot().room?.paused === false)
+    ok('另一个人开自动演绎也能恢复', client.getSnapshot().round > frozen)
+    ok('停笔标记已清掉', client.getSnapshot().room?.paused === false)
 
     console.log('\n[节拍]')
     client.setSpeed(800)

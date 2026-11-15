@@ -64,6 +64,9 @@ wss.on('connection', ws => {
             case 'pause':
                 room.setPaused(session.playerId, msg.on)
                 break
+            case 'step':
+                room.step(session.playerId)
+                break
             case 'speed':
                 room.setSpeed(session.playerId, msg.ms)
                 break

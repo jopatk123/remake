@@ -206,10 +206,12 @@ export function send(msg: ClientMessage) {
 }
 
 export const start = () => send({ t: 'start' })
-/** 选完天赋、分完点数、进入对战页后报到；全房间集齐才开始推进 */
+/** 选完天赋、分完点数、进入对战页后报到；全房间集齐后先停着等落笔 */
 export const enter = () => send({ t: 'enter' })
-/** 任意玩家都能停 / 继续，服务端不校验谁按的 */
+/** 任意玩家都能停笔 / 开自动演绎，服务端不校验谁按的 */
 export const setPaused = (on: boolean) => send({ t: 'pause', on })
+/** 停笔时任何人点一下，全房间过一年 */
+export const step = () => send({ t: 'step' })
 /** 任意玩家都能调节拍，全房间跟着变 */
 export const setSpeed = (ms: number) => send({ t: 'speed', ms })
 /** 发一条弹幕。限流和截断都在服务端，这边不做二次判断 */

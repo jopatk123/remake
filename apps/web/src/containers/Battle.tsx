@@ -402,7 +402,7 @@ export function Battle() {
                 <span className="battle-meta">
                     {over ? '本局已结束' : `${alive} / ${players.length} 人还在跑`}
                 </span>
-                {/* 节拍谁都能改：读得快的人不必等，想细看的人也不必抢暂停 */}
+                {/* 节拍谁都能改：读得快的人不必等，想细看的人不必抢停笔 */}
                 <span className="battle-speed" role="group" aria-label="推进速度">
                     <span className="battle-speed-label">速度</span>
                     {SPEEDS.map(ms => (

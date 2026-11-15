@@ -366,11 +366,11 @@ export function Room() {
                                 <ol>
                                     <li>
                                         <strong>到齐才走</strong>
-                                        <span>所有人选完天赋、分好点数进入对战页后，才自动往前推进。</span>
+                                        <span>所有人选完天赋、分好点数进入对战页后，先停着等有人落笔。</span>
                                     </li>
                                     <li>
                                         <strong>人人可控</strong>
-                                        <span>谁都可以暂停，谁都可以调速度。</span>
+                                        <span>谁都可以点「下一年」或开「自动演绎」，谁都可以调速度。</span>
                                     </li>
                                     <li>
                                         <strong>结算回房</strong>

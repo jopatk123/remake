@@ -1,10 +1,10 @@
 /**
- * 房间协议自测：两个假客户端跑一局，验证自动推进、暂停、结算都不出错。
+ * 房间协议自测：两个假客户端跑一局，验证手动过年、自动演绎、结算都不出错。
  *
  * 中继由脚本自己起（见 relay.ts），所以直接 `pnpm test:protocol` 就行。
  */
 import { WebSocket } from 'ws'
-import type { RoomView, ServerMessage } from '@remake/multi'
+import { STEP_GAP, type RoomView, type ServerMessage } from '@remake/multi'
 import { RESULT, startRelay, TICK } from './relay'
 
 const ROOM = 'TEST' + Math.floor(Math.random() * 900 + 100)
@@ -131,7 +131,7 @@ async function main() {
     ok('等待名单里有两个人', a.lastRoom()?.waiting.length === 2)
     ok('等人时不会推进', a.ticks.length === 0)
 
-    console.log('\n[3] 全员进入后自动推进')
+    console.log('\n[3] 全员进入后先停着')
     a.enter()
     await sleep(120)
     ok('只进了一个人，还在等', a.lastRoom()?.waiting.join() === '乙')
@@ -142,27 +142,45 @@ async function main() {
     ok('还有人没进入时一年都不走', a.ticks.length === 0)
     b.enter()
     await sleep(TICK + 150)
-    ok('两人都进入后自动开跑', a.lastRoom()?.paused === false)
-    ok('没人点“继续”也过了第一年', a.ticks.length > 0)
+    ok('两人都进入后仍停着', a.lastRoom()?.paused === true)
+    ok('没人落笔就不会过年', a.ticks.length === 0)
+    ok('不是某个人按的停笔', a.lastRoom()?.pausedBy === null)
 
-    const before = a.ticks.length
+    console.log('\n[4] 任何人都能点下一年')
+    a.send({ t: 'step' })
+    b.send({ t: 'step' })
+    await sleep(120)
+    ok('同时点只过一年', a.ticks.length === 1 && a.ticks[0] === 1)
+    await sleep(STEP_GAP + 50)
+    b.send({ t: 'step' })
+    await sleep(120)
+    ok('隔开防抖后再点又过一年', a.ticks.length === 2)
+
+    console.log('\n[5] 自动演绎要点一下才开')
+    const beforeAuto = a.ticks.length
+    a.send({ t: 'pause', on: false })
     await sleep(TICK * 3)
-    ok('之后按节拍持续往前走', a.ticks.length > before)
-
-    console.log('\n[4] 任意人暂停')
-    a.send({ t: 'pause', on: true })
+    ok('甲点自动演绎后按节拍走', a.ticks.length > beforeAuto)
+    ok('停笔标记已清掉', a.lastRoom()?.paused === false)
+    const duringAuto = a.ticks.length
+    a.send({ t: 'step' })
+    a.send({ t: 'step' })
+    await sleep(50)
+    ok(
+        '自动跑着时点下一年不会多过一年',
+        a.ticks.length <= duringAuto + 1,
+    )
+    b.send({ t: 'pause', on: true })
     await sleep(150)
-    ok('房间进入暂停', a.lastRoom()?.paused === true)
-    ok('记下了是谁暂停的', a.lastRoom()?.pausedBy === '甲')
+    ok('乙停笔后房间停下', a.lastRoom()?.paused === true)
+    ok('记下了是谁停的', a.lastRoom()?.pausedBy === '乙')
     const frozen = a.ticks.length
     await sleep(TICK * 4)
-    ok('暂停期间一年都不走', a.ticks.length === frozen)
-
-    console.log('\n[5] 另一个人也能继续')
+    ok('停笔期间一年都不走', a.ticks.length === frozen)
     b.send({ t: 'pause', on: false })
     await sleep(TICK * 3)
-    ok('乙点继续后恢复推进', a.ticks.length > frozen)
-    ok('暂停标记已清掉', a.lastRoom()?.paused === false)
+    ok('乙再开自动演绎也能恢复', a.ticks.length > frozen)
+    ok('自动演绎开着时没停笔人', a.lastRoom()?.paused === false)
 
     console.log('\n[6] 开局后拒绝新加入')
     const c = new Client('丙', relay.url)
@@ -361,7 +379,9 @@ async function main() {
     await sleep(100)
     e1.enter()
     e2.enter()
-    await sleep(TICK + 150)
+    await sleep(120)
+    e1.send({ t: 'step' })
+    await sleep(120)
     e1.send({
         t: 'sync',
         age: 80,
@@ -403,6 +423,8 @@ async function main() {
     await sleep(100)
     s1.enter()
     s2.enter()
+    await sleep(120)
+    s1.send({ t: 'pause', on: false })
     const keepAlive = setInterval(() => s1.sync(10), 80)
     await sleep(400 + TICK * 3)
     clearInterval(keepAlive)
