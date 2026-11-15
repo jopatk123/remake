@@ -1,9 +1,13 @@
 import { useCallback } from 'react'
-import { events, talents, achievements } from '@remake/data'
+import { events, talents, achievements, isRootVessel } from '@remake/data'
 import { useProfile, useSetStep, Step } from '.'
 
 const TotalEvents = events.size
-const TotalTalents = talents.size
+// 灵根玉简开奖后会消耗本体，永远不会进入 profile.talents；
+// 若仍计入分母，天赋收集度就永远到不了 100%。
+const TotalTalents = [...talents.values()].filter(
+    talent => !isRootVessel(talent),
+).length
 
 export const useAchv = () => {
     const [profile] = useProfile()

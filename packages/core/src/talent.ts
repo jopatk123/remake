@@ -133,17 +133,22 @@ export function exclude(talent: Talent['id'], list: Iterable<Talent['id']>) {
 function chainReplace(t: Talent['id'], ts: Set<Talent['id']>, rng?: RNG) {
     const { replacement: r } = talents.get(t)!
     if (!r) return null
+    // 灵根玉简和它开出的灵根同属 'root' 互斥组。检查目标是否被互斥时
+    // 必须把玉简自身从集合里摘掉，否则它会把同组的目标全部排除，
+    // 开奖返回 null，橙色玉简变成一张没有任何效果的死卡。
+    const others = new Set(ts)
+    others.delete(t)
     let picked: Talent['id'] | null = null
     if (r.talent) {
         const filtered = r.talent.filter(([id]) => {
             if (ts.has(id)) return false
-            return exclude(id, ts) == null
+            return exclude(id, others) == null
         })
         picked = pickWeight(filtered, rng)
     } else if (r.grade != null) {
         const filtered = GradeMap.get(r.grade)!.filter(id => {
             if (ts.has(id)) return false
-            return exclude(id, ts) == null
+            return exclude(id, others) == null
         })
         picked = pick(filtered, rng)
     }
@@ -172,8 +177,13 @@ export function replacement(
         chains.set(talent, chain)
         // 转盘 / 福袋类天赋开奖后消耗本体：否则「紫色转盘」会同时留下
         // 转盘和它开出的橙色，等于白赚一个天赋位和一份收集度。
+        // 链条里的中间容器（例如橙色转盘开出灵根玉简，玉简再开出灵根）
+        // 同样要消耗，只保留最后那个没有 replacement 的结果。
         set.delete(talent)
-        chain.forEach(t => set.add(t))
+        for (const t of chain) {
+            if (talents.get(t)?.replacement) continue
+            set.add(t)
+        }
     }
     return { talents: set, chains }
 }

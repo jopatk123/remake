@@ -10,7 +10,14 @@ import {
     TRANSCEND_EVENT_ID,
 } from '@remake/data'
 import { createState, propsEffect } from './state'
-import { exclude, replacement, tryRevive, trigger as ttr } from './talent'
+import type { PullOptions } from './talent'
+import {
+    exclude,
+    pull,
+    replacement,
+    tryRevive,
+    trigger as ttr,
+} from './talent'
 import { trigger as etr } from './event'
 import {
     applyCultivationEffects,
@@ -49,6 +56,47 @@ describe('天赋 / 事件修复', () => {
         expect(exclude(3011, [3012])).toBe(3012)
         expect(exclude(3012, [3013])).toBe(3013)
         expect(exclude(3013, [3011])).toBe(3011)
+    })
+
+    test('灵根全部橙色，且本体不直接进池', () => {
+        const roots = [...talents.values()].filter(
+            t => t.group === 'root' && !t.replacement,
+        )
+        expect(roots.length).toBe(36)
+        expect(roots.every(t => t.grade === 3 && t.exclusive)).toBe(true)
+
+        // 只出橙色时，抽满橙池也不应看到灵根本体（只有玉简和非灵根橙）
+        const options = {
+            count: 100,
+            rate: {
+                base: new Map([
+                    [0, 0],
+                    [1, 0],
+                    [2, 0],
+                    [3, 1],
+                ]),
+                additions: {},
+            },
+        } as PullOptions
+        const rootIds = new Set(roots.map(t => t.id))
+        expect(pull(options, profile).some(id => rootIds.has(id))).toBe(false)
+    })
+
+    test('灵根玉简只开同组灵根', () => {
+        const result = replacement([3060])
+        expect(result.talents.has(3060)).toBe(false)
+        const opened = [...result.talents]
+        expect(opened.length).toBe(1)
+        const members = talents
+            .get(3060)!
+            .replacement!.talent!.map(([id]) => id)
+        expect(members).toContain(opened[0]!)
+        expect(talents.get(opened[0]!)?.group).toBe('root')
+    })
+
+    test('灵根玉简彼此互斥', () => {
+        expect(exclude(3060, [3061])).toBe(3061)
+        expect(exclude(3068, [3060])).toBe(3060)
     })
 
     test('太古遗脉入道即生效，不限太古法门', () => {
