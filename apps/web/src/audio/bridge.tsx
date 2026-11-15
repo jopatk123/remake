@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { subscribeRareFx } from '@/fx/rare'
 import { useMulti } from '@/multi/useMulti'
 import { getGraph, resumeAudio, suspendAudio, unlockAudio } from './context'
-import { playRareFx, playSfx } from './sfx'
+import { peerOutcomeSfx, playRareFx, playSfx } from './sfx'
 import {
     getAudioSettings,
     subscribeAudioSettings,
@@ -80,13 +80,11 @@ export function AudioRoot() {
                 alive: player.alive,
                 ending: player.ending ?? null,
             })
-            if (!before) return
-            const pan = panOf(index, total)
-            if (before.alive && !player.alive) {
-                playSfx('farDeath', pan)
-            } else if (!before.ending && player.ending) {
-                playSfx('farAscend', pan)
-            }
+            const sfx = peerOutcomeSfx(before, {
+                alive: player.alive,
+                ending: player.ending ?? null,
+            })
+            if (sfx) playSfx(sfx, panOf(index, total))
         })
     }, [multi.room, multi.id])
 

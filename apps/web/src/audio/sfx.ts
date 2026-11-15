@@ -38,7 +38,55 @@ export type SfxName =
     | 'farDeath'
     | 'farAscend'
 
+export type PeerSnapshot = {
+    alive: boolean
+    ending: string | null
+}
+
+/**
+ * 对手列的结束音：必须先看结局。飞升时 alive 也会变成 false，
+ * 若先判断阵亡，远钟永远走死亡、飞升那口钟就成了死代码。
+ */
+export function peerOutcomeSfx(
+    before: PeerSnapshot | undefined,
+    after: PeerSnapshot,
+): Extract<SfxName, 'farDeath' | 'farAscend'> | null {
+    if (!before) return null
+    if (!before.ending && after.ending) {
+        if (
+            after.ending === 'ascend' ||
+            after.ending === 'transcend' ||
+            after.ending === 'leave-world'
+        ) {
+            return 'farAscend'
+        }
+        return 'farDeath'
+    }
+    if (before.alive && !after.alive) return 'farDeath'
+    return null
+}
+
+/** 视觉总线的一条 → 该响哪一声，纯函数方便单测 */
+export function sfxForRareItem(item: RareFxItem): SfxName {
+    if (item.fx === 'ambush') return 'ambush'
+    if (item.tag === '飞升') return 'ascend'
+    if (item.ending === 'ascend' || item.ending === 'transcend' || item.ending === 'leave-world') {
+        return 'ascend'
+    }
+    if (item.ending === 'reincarnation') return 'reincarnation'
+    if (item.tag === '结局' || item.ending === 'death') return 'death'
+    if (item.tag === '雷劫') return 'tribulation'
+    if (item.tag === '危机') return 'crisis'
+    if (item.tag === '顿悟') return 'insight'
+    if (item.tag === '天兆') return 'omen'
+    if (item.tag === '稀有天赋' || item.tag === '橙色天赋') return 'rare'
+    if (item.tag === '稀有奇遇' || item.tag === '奇遇') return 'omen'
+    return 'propUp'
+}
+
 export function playSfx(name: SfxName, pan = 0, delay = 0) {
+    /* 后台时 AudioContext.currentTime 冻住，节拍仍在走，回来会叠成一团 */
+    if (typeof document !== 'undefined' && document.hidden) return
     const g = getGraph()
     if (!g) return
     const bus = g.sfxBus
@@ -235,46 +283,5 @@ export function playSfx(name: SfxName, pan = 0, delay = 0) {
 /** 把视觉总线的产出翻成声音，不重复判定语义 */
 export function playRareFx(items: readonly RareFxItem[]) {
     /* 同一年可能有多条，最多三条，按稀有度从高到低 */
-    for (const item of items.slice(0, 3)) {
-        if (item.fx === 'ambush') {
-            playSfx('ambush')
-            continue
-        }
-        if (item.tag === '飞升') {
-            playSfx('ascend')
-            continue
-        }
-        if (item.tag === '结局') {
-            if (item.title === '渡劫飞升' || item.title === '超脱') playSfx('ascend')
-            else if (item.title === '转世重修') playSfx('reincarnation')
-            else playSfx('death')
-            continue
-        }
-        if (item.tag === '雷劫') {
-            playSfx('tribulation')
-            continue
-        }
-        if (item.tag === '危机') {
-            playSfx('crisis')
-            continue
-        }
-        if (item.tag === '顿悟') {
-            playSfx('insight')
-            continue
-        }
-        if (item.tag === '天兆') {
-            playSfx('omen')
-            continue
-        }
-        if (item.tag === '稀有天赋' || item.tag === '橙色天赋') {
-            playSfx('rare')
-            continue
-        }
-        if (item.tag === '稀有奇遇' || item.tag === '奇遇') {
-            playSfx('omen')
-            continue
-        }
-        /* 紫色天赋之类的轻提示：不喧宾夺主，但要让玩家知道有新东西 */
-        playSfx('propUp')
-    }
+    for (const item of items.slice(0, 3)) playSfx(sfxForRareItem(item))
 }

@@ -50,7 +50,7 @@ function makeNoise(ctx: AudioContext, seconds: number) {
 
 function applyVolume(g: AudioGraph) {
     const settings = getAudioSettings()
-    const level = settings.muted ? 0.0001 : SFX_BASE * settings.sfx
+    const level = settings.muted ? 0 : SFX_BASE * settings.sfx
     g.sfxBus.gain.setTargetAtTime(level, g.ctx.currentTime, 0.08)
 }
 

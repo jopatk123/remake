@@ -20,7 +20,8 @@ export function Pick() {
         if (shown.current === key) return
         shown.current = key
         /* 十签依次翻开的纸声，排在音频时间轴上，不会被渲染抖动带偏 */
-        for (let i = 0; i < 6; i += 1) playSfx('flip', 0, i * 0.07)
+        for (let i = 0; i < pulled.length; i += 1)
+            playSfx('flip', 0, i * 0.06)
         emitPullRareFx(pulled, profile)
     }, [pulled, profile])
     const { enabled, min, max } = useSubmitIsEnable()

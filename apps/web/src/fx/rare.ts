@@ -7,7 +7,7 @@
  * 再让「首次获得」享受更高一档的反馈。
  */
 import { EndingName, events, talents } from '@remake/data'
-import type { Event as GameEvent } from '@remake/data'
+import type { EndingType, Event as GameEvent } from '@remake/data'
 import type { ProfileState } from '@remake/core'
 
 export type RareFxTone = 'gold' | 'violet' | 'azure' | 'jade' | 'blood'
@@ -23,6 +23,8 @@ export interface RareFxItem {
     description?: string
     /** 专属表现：魔修偷袭额外扫一道血色刀光，和其他稀有事件区分 */
     fx?: 'ambush'
+    /** 结局事件带上类型，音效按这个播，不靠中文标题匹配 */
+    ending?: EndingType
 }
 
 export interface RareFxSource {
@@ -165,6 +167,7 @@ function classifyEvent(
                 EndingName[event.ending as keyof typeof EndingName] ??
                 clip(event.event),
             description: clip(event.event, 40),
+            ending: event.ending as EndingType,
         }
     }
 

@@ -4,6 +4,7 @@ import { RESULT_MS } from '@remake/multi'
 import { useMulti } from '@/multi/useMulti'
 import { connect, disconnect, start } from '@/multi/client'
 import { copyText } from '@/multi/clipboard'
+import { AudioToggle } from '@/audio'
 import { toastMsg } from '@/toast'
 import { DanmakuInput, DanmakuTrack } from '@/components/Danmaku'
 import { Ranking } from '@/components/Ranking'
@@ -236,9 +237,12 @@ export function Room() {
                                     {players.length} 人在席
                                 </strong>
                             </div>
-                            <span className={`room-lobby-state ${players.length > 1 ? 'ready' : ''}`}>
-                                {players.length > 1 ? '可以开局' : '等第二位入席'}
-                            </span>
+                            <div className="room-lobby-tools">
+                                <span className={`room-lobby-state ${players.length > 1 ? 'ready' : ''}`}>
+                                    {players.length > 1 ? '可以开局' : '等第二位入席'}
+                                </span>
+                                <AudioToggle />
+                            </div>
                         </div>
                         <ul className="room-players">
                             {players.map((player, index) => (

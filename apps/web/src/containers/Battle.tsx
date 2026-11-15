@@ -30,6 +30,7 @@ import {
 import { copyText } from '@/multi/clipboard'
 import { useMultiMatch } from '@/multi/play'
 import { useResultCountdown } from '@/multi/useMulti'
+import { AudioToggle } from '@/audio'
 import { toastMsg } from '@/toast'
 import type { Props, PlayerView } from '@remake/multi'
 import './Battle.css'
@@ -424,6 +425,7 @@ export function Battle() {
                 <button className="secondary" onClick={handleLeave}>
                     退出
                 </button>
+                <AudioToggle />
             </div>
 
             <div className="battle-tick-track" aria-hidden="true">

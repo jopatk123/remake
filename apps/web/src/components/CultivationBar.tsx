@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useGameState } from '@remake/hooks'
+import { playSfx } from '@/audio'
 import {
     realmConfig,
     realmTitle,
@@ -119,6 +120,8 @@ export function CultivationBar({ compact = false }: { compact?: boolean }) {
                 () => setRealmFx(null),
                 nextRealmFx.kind === 'ascend' ? 2600 : 1800,
             )
+            /* 飞升走稀有特效那口长钟，这里只给入道和大境界突破补一声 */
+            if (nextRealmFx.kind !== 'ascend') playSfx('breakthrough')
         }
     }, [state])
 

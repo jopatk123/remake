@@ -37,3 +37,16 @@
     min-width: 2.6rem;
     padding: 0 0.7rem;
 }
+
+.battle-bar > button.audio-toggle {
+    flex: 0 0 auto;
+    min-width: 2.4rem;
+    padding: 0 0.5rem;
+}
+
+.screen.room .room-lobby-tools > button.audio-toggle {
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0;
+    border-radius: 999px;
+}
