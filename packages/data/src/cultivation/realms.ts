@@ -295,6 +295,13 @@ export const TUNING = {
     decayDeathGrace: 45,
     decayDeathRate: 0.005,
     decayDeathCap: 0.15,
+    // ── 魔修偷袭：引擎每年独立掷骰，不进随机池 ────────────────────────
+    /** 每年触发概率（千分之一）。一局动辄上千年，千分之一并不算稀客 */
+    ambushRate: 0.001,
+    /** 元婴之前当场身死的概率，会再乘死亡减伤（1 - deathShield） */
+    ambushDeathRate: 0.3,
+    /** 达到该大境界后改为「夺舍重生 / 重伤」各半 */
+    ambushRebirthRealm: 3,
 } as const
 
 /** 具名大道。雷隙补悟只从这里补，不再发明「雷隙补悟N」凑数 */

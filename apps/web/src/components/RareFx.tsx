@@ -90,6 +90,9 @@ export function RareFxLayer() {
             role="status"
             aria-live={tier >= 2 ? 'assertive' : 'polite'}
         >
+            {first.fx === 'ambush' && (
+                <div className="rare-fx-slash" aria-hidden="true" />
+            )}
             {tier >= 2 && <div className="rare-fx-burst" aria-hidden="true" />}
             {tier >= 2 && <div className="rare-fx-ring" aria-hidden="true" />}
             {tier >= 2 && (

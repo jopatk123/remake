@@ -70,6 +70,21 @@
     animation: rare-flash 0.7s ease-out both;
 }
 
+/* 魔修偷袭专属：一道斜劈而下的血光 */
+.rare-fx-slash {
+    position: absolute;
+    inset: -25%;
+    background: linear-gradient(
+        112deg,
+        transparent 42%,
+        color-mix(in srgb, var(--fx-color) 58%, transparent) 48%,
+        color-mix(in srgb, var(--fx-color) 22%, transparent) 51%,
+        transparent 58%
+    );
+    opacity: 0;
+    animation: rare-slash 1.1s var(--ease-out) both;
+}
+
 .rare-fx-ring {
     position: absolute;
     width: 20rem;
@@ -207,6 +222,13 @@
     100% { opacity: 0; }
 }
 
+@keyframes rare-slash {
+    0% { opacity: 0; transform: translate3d(-14%, -6%, 0) scaleX(0.4); }
+    16% { opacity: 0.95; }
+    50% { opacity: 0.55; }
+    100% { opacity: 0; transform: translate3d(10%, 4%, 0) scaleX(1); }
+}
+
 @keyframes rare-vignette {
     0% { opacity: 0; }
     20% { opacity: 1; }
@@ -254,6 +276,7 @@
     .rare-fx::before,
     .rare-fx::after,
     .rare-fx-burst,
+    .rare-fx-slash,
     .rare-fx-ring,
     .rare-fx-particles > span,
     .rare-fx-card {

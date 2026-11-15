@@ -159,4 +159,13 @@ export const COMMON_ROWS: string[] = [
     '51309|仙门后的光落在你肩上，这一刻比千年修行都轻。|breakthrough|3|SPR:5|nr:1;kind:omen',
     '51310|走火入魔，真元逆冲经脉，道基寸寸崩碎，神魂俱灭。|ending|2|LIF:-1|nr:1;end:death;kind:crisis',
     '51311|寿元终于耗尽，你盘坐洞府，此界只留下一座衣冠冢。|ending|2|LIF:-1|nr:1;end:death;kind:crisis',
+
+    // ── 魔修偷袭(51500–)：引擎每年独立掷骰千分之一，不进随机池 ────────
+    // 元婴之前：三成当场身死，七成重伤（小境界 -1 / 修为清零 / 五维 -30%）。
+    // 元婴之后：五成夺舍重生（五维归 10、年龄归 1、境界清零），五成重伤。
+    // 数值结算全在 core/cultivation.ts 的 rollMagicAmbush 里，这几条只负责文案。
+    '51500|荒岭上忽有血光罩落，一名魔修自你背后出手，你连对方的脸都没看清。|crisis|3||nr:1;kind:crisis',
+    '51501|你以本命修为硬挡一击，经脉寸断，一身修为散了大半。|crisis|1||nr:1;kind:crisis',
+    '51502|肉身被打得粉碎，你弃了残躯，一缕残魂钻进山下农舍刚满周岁的婴孩体内。|crisis|3||nr:1;kind:omen',
+    '51503|魔修收手时，你的道基已被搅碎，连一句遗言都没留下。|crisis|2|LIF:-1|nr:1;end:death;kind:crisis',
 ]

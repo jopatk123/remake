@@ -26,6 +26,7 @@ import {
     shouldAutoStart,
     pickEntryEvent,
     advanceCultivation,
+    rollMagicAmbush,
     resolveEventPool,
     lastResortEvent,
     cultivationSnapshot,
@@ -180,6 +181,19 @@ export function next(
         } else {
             // 兜底表都空了也不抛异常，免得整个多人房间被一个人卡住
             console.warn('[core] no event available at age', age)
+        }
+    }
+
+    // ③.5 魔修偷袭：千分之一/年，独立于事件池。
+    // 放在随机事件之后，日志里读起来就是「这一年先遇到 X，又被魔修截杀」。
+    if (!current.ending && current.life >= 1) {
+        const ambush = rollMagicAmbush(current, rng)
+        current = ambush.state
+        for (const id of ambush.broadcasts) {
+            if (current.ending) break
+            const result = etr(id, current, profile)
+            current = result.state
+            randomEvents.push(...result.triggers)
         }
     }
 

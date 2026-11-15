@@ -159,7 +159,7 @@ export function Logs({ logs }: { logs: LogLike[] }) {
         <>
             {logs.map((log, index) => (
                 <Log
-                    key={log.age}
+                    key={`${log.age}-${index}`}
                     log={log}
                     latest={index === logs.length - 1}
                 />

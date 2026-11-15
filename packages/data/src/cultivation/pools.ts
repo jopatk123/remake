@@ -88,6 +88,16 @@ export const ASCEND_OMEN_ID = 51309
 export const BACKLASH_DEATH_ID = 51310
 export const DECAY_DEATH_ID = 51311
 
+/**
+ * 魔修偷袭（51500–）。
+ * 这一组不进随机池：引擎每年独立掷一次千分之一的骰子，
+ * 再按境界决定「身死 / 重伤 / 夺舍重生」。
+ */
+export const AMBUSH_ID = 51500
+export const AMBUSH_INJURY_ID = 51501
+export const AMBUSH_REBIRTH_ID = 51502
+export const AMBUSH_DEATH_ID = 51503
+
 function weightOf(event: Event): number {
     const stage = (event.stage as string) ?? 'daily'
     const base = STAGE_WEIGHT[stage] ?? 8

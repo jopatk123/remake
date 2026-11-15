@@ -111,8 +111,9 @@ function Solo() {
                     >
                         {logs.map((log, index) => {
                             const chapter = logChapter(log.age)
+                            // 夺舍重生后年龄从 1 重新计数，单用 age 会撞 key
                             return (
-                                <Fragment key={log.age}>
+                                <Fragment key={`${log.age}-${index}`}>
                                     {chapter && (
                                         <li className="log-chapter" aria-hidden="true">
                                             <span>{chapter}</span>

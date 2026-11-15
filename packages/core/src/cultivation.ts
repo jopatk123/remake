@@ -35,6 +35,10 @@ import {
     ASCEND_OMEN_ID,
     BACKLASH_DEATH_ID,
     DECAY_DEATH_ID,
+    AMBUSH_ID,
+    AMBUSH_INJURY_ID,
+    AMBUSH_REBIRTH_ID,
+    AMBUSH_DEATH_ID,
     LONGEVITY_PILL_ID,
     NAMED_DAOS,
     deathShield,
@@ -493,6 +497,115 @@ export function advanceCultivation(
         }
     })
     return { state: nextState, broadcasts }
+}
+
+export interface AmbushResult {
+    state: GameState
+    /** 按顺序播报的事件 id：偷袭 → 身死 / 重伤 / 夺舍 */
+    broadcasts: number[]
+}
+
+/** 重伤：小境界 -1、修为清零；五维 -30%，保底 10，已低于 10 的不再倒退 */
+function applyAmbushInjury(draft: GameState) {
+    const d = draft.cultivation
+    d.minor = Math.max(0, d.minor - 1)
+    d.progress = 0
+    d.bottleneck = false
+
+    const delta: Partial<Properties> = {}
+    for (const key of PROPERTY_KEYS) {
+        const value = draft.props.current[key]
+        // 低于 10 点的属性不倒退；高于 10 点的按七成结算，且结果不低于 10
+        if (value <= 10) continue
+        const target = Math.max(10, Math.floor(value * 0.7))
+        if (target < value) delta[key] = target - value
+    }
+    if (Object.keys(delta).length)
+        draft.props = propsEffect(
+            draft.props,
+            delta,
+            negativeClampEnabled(draft),
+        )
+}
+
+/**
+ * 夺舍重生：五维归 10、年龄归 1，境界清零。
+ *
+ * 天赋 / 大道 / 成就 / 长期标记全部保留——「带着记忆重开」，
+ * 所以这里不碰 daos、flags、talents、achievements 与 rateBonus。
+ */
+function applyAmbushRebirth(draft: GameState) {
+    const d = draft.cultivation
+    d.realm = 0
+    d.minor = 0
+    d.progress = 0
+    d.bottleneck = false
+    d.decay = 0
+    d.tribulation = 0
+    d.tribulationStage = 0
+    d.tribulationBaseline = 0
+
+    const delta = {} as Partial<Properties>
+    for (const key of PROPERTY_KEYS) delta[key] = 10 - draft.props.current[key]
+    delta.age = 1 - draft.props.current.age
+    draft.props = propsEffect(draft.props, delta)
+
+    // 换了一具身体：旧的「哪一年触发过什么」不再适用，
+    // 否则 age 归 1 后冷却差值为负，所有见过的事件都会被压到最低权重。
+    // 一生一次事件仍由 events 集合兜住，不会重复。
+    draft.eventHistory.clear()
+}
+
+/**
+ * 魔修偷袭：每年千分之一，独立于随机池。
+ *
+ * - 元婴之前：三成当场身死（照常吃死亡减伤），七成重伤。
+ * - 元婴之后：五成夺舍重生，五成重伤。
+ *
+ * 身死这一支只播报 51503，真正的 LIF:-1 与复活结算交给事件系统，
+ * 这样死者苏生、轮回之外等既有机制照常生效。
+ */
+export function rollMagicAmbush(
+    state: GameState,
+    rng?: RNG,
+): AmbushResult {
+    const c = state.cultivation
+    if (!c.started || state.ending || state.life < 1)
+        return { state, broadcasts: [] }
+    // 百岁入道之后才会被魔修盯上
+    if (state.props.current.age <= TUNING.autoStartAge)
+        return { state, broadcasts: [] }
+    if (random(1000, 0, rng) >= TUNING.ambushRate * 1000)
+        return { state, broadcasts: [] }
+
+    const broadcasts = [AMBUSH_ID]
+
+    // 元婴及以上：夺舍重生 / 重伤各半
+    if (c.realm >= TUNING.ambushRebirthRealm) {
+        // random(max, min) 返回 [min, max] 闭区间，五五开要用 random(1, 0)
+        if (random(1, 0, rng) === 0)
+            return {
+                state: produce(state, applyAmbushRebirth),
+                broadcasts: [...broadcasts, AMBUSH_REBIRTH_ID],
+            }
+        return {
+            state: produce(state, applyAmbushInjury),
+            broadcasts: [...broadcasts, AMBUSH_INJURY_ID],
+        }
+    }
+
+    // 低境界：死亡减伤照常生效，但不再乘 deathRiskScale / softenRisk，
+    // 否则 30% 会被放大到 84%，和「三成」的设定对不上
+    const deathRate =
+        TUNING.ambushDeathRate *
+        (1 - deathShield(state.props.current, c))
+    if (random(1000, 0, rng) < deathRate * 1000)
+        return { state, broadcasts: [...broadcasts, AMBUSH_DEATH_ID] }
+
+    return {
+        state: produce(state, applyAmbushInjury),
+        broadcasts: [...broadcasts, AMBUSH_INJURY_ID],
+    }
 }
 
 /**

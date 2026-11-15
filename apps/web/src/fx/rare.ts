@@ -21,6 +21,8 @@ export interface RareFxItem {
     tag: string
     title: string
     description?: string
+    /** 专属表现：魔修偷袭额外扫一道血色刀光，和其他稀有事件区分 */
+    fx?: 'ambush'
 }
 
 export interface RareFxSource {
@@ -93,6 +95,9 @@ function isNegative(event: GameEvent) {
     return Object.values(event.effect ?? {}).some(value => value < 0)
 }
 
+/** 魔修偷袭系列：千分之一/年、后果极重，单独享受最高档表现 */
+const AMBUSH_IDS = new Set([51500, 51501, 51502, 51503])
+
 function classifyTalent(
     id: number,
     profile: ProfileState | null,
@@ -122,6 +127,28 @@ function classifyEvent(
 
     const firstTime = profile ? !profile.events.has(id) : true
     const key = `event:${id}`
+
+    // 魔修偷袭：不走通用 crisis 的 tier 2，否则 1/1000 的天降横祸
+    // 看起来和普通危机事件一个量级。这里固定最高档 + 专属刀光。
+    if (AMBUSH_IDS.has(id)) {
+        const title =
+            id === 51500
+                ? '魔修偷袭'
+                : id === 51501
+                  ? '身受重伤'
+                  : id === 51502
+                    ? '夺舍重生'
+                    : '身死道消'
+        return {
+            key,
+            tier: 3,
+            tone: 'blood',
+            tag: '魔劫',
+            title,
+            description: clip(event.event, 40),
+            fx: 'ambush',
+        }
+    }
 
     if (event.ending) {
         const death = event.ending === 'death'

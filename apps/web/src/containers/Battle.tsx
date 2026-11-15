@@ -219,7 +219,7 @@ function MyColumn({
             <ul className="logs battle-logs hide-scrollbar" ref={ref}>
                 {logs.map((log, index) => (
                     <Log
-                        key={log.age}
+                        key={`${log.age}-${index}`}
                         log={log}
                         latest={index === logs.length - 1}
                     />
@@ -285,7 +285,7 @@ function PeerColumn({
                 )}
                 {player.logs.map((log, index) => (
                     <Log
-                        key={log.age}
+                        key={`${log.age}-${index}`}
                         log={log}
                         latest={index === player.logs.length - 1}
                     />
