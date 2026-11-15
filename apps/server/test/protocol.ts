@@ -126,6 +126,7 @@ async function main() {
     a.send({ t: 'start' })
     await sleep(100)
     ok('进入 playing', a.lastRoom()?.phase === 'playing')
+    ok('第一局的局次从 1 起', a.lastRoom()?.match === 1)
     ok('开局后先停着，等所有人进入', a.lastRoom()?.paused === true)
     ok('等待名单里有两个人', a.lastRoom()?.waiting.length === 2)
     ok('等人时不会推进', a.ticks.length === 0)
@@ -231,6 +232,14 @@ async function main() {
             (a.lastRoom()?.resultLeft ?? Infinity) <= RESULT,
     )
 
+    const late = new Client('丁', relay.url)
+    await late.open()
+    late.join()
+    await sleep(150)
+    ok('结算期间也不能加入', late.errors.some(e => e.includes('已经开始')))
+    ok('结算时房间人数没变', a.lastRoom()?.players.length === 2)
+    late.close()
+
     const endRound = a.ticks.length
     await sleep(TICK * 3)
     ok('结束后不再推进', a.ticks.length === endRound)
@@ -262,6 +271,8 @@ async function main() {
     a.send({ t: 'start' })
     await sleep(150)
     ok('房主能直接开下一局', a.lastRoom()?.phase === 'playing')
+    ok('下一局局次加一', a.lastRoom()?.match === 2)
+    ok('新的一局年数从 0 起', a.lastRoom()?.round === 0)
     ok('开局后清掉上一局排名', a.lastRoom()?.result === null)
 
     console.log('\n[10] 房主掉线后随机换人')
@@ -336,6 +347,88 @@ async function main() {
     a.close()
     b.close()
     await sleep(150)
+
+    console.log('\n[13] 上报结局就算结束')
+    const roomEnd = 'END' + Math.floor(Math.random() * 900 + 100)
+    const e1 = new Client('飞升', relay.url)
+    const e2 = new Client('身死', relay.url)
+    await Promise.all([e1.open(), e2.open()])
+    e1.join(roomEnd)
+    await sleep(80)
+    e2.join(roomEnd)
+    await sleep(120)
+    e1.send({ t: 'start' })
+    await sleep(100)
+    e1.enter()
+    e2.enter()
+    await sleep(TICK + 150)
+    e1.send({
+        t: 'sync',
+        age: 80,
+        life: 1,
+        alive: true,
+        summary: 900,
+        props: { charm: 1, intelligence: 1, strength: 1, money: 1, spirit: 5 },
+        logs: [],
+        ending: 'ascend',
+    })
+    e2.send({
+        t: 'sync',
+        age: 20,
+        life: 0,
+        alive: true,
+        summary: 40,
+        props: { charm: 1, intelligence: 1, strength: 1, money: 1, spirit: 0 },
+        logs: [],
+        ending: 'death',
+    })
+    await sleep(200)
+    ok('飞升即使还报 alive 也被视为结束', e1.lastRoom()?.players.find(p => p.name === '飞升')?.alive === false)
+    ok('两人有结局后进入结算', e1.lastRoom()?.phase === 'over')
+    ok('飞升排在身死前面', e1.result()[0]?.name === '飞升')
+    e1.close()
+    e2.close()
+
+    console.log('\n[14] 上报超时按结束处理')
+    const stallRelay = await startRelay({ SYNC_STALL_MS: '400' })
+    const s1 = new Client('甲超时', stallRelay.url)
+    const s2 = new Client('乙卡死', stallRelay.url)
+    await Promise.all([s1.open(), s2.open()])
+    const stallRoom = 'STL' + Math.floor(Math.random() * 900 + 100)
+    s1.join(stallRoom)
+    await sleep(80)
+    s2.join(stallRoom)
+    await sleep(120)
+    s1.send({ t: 'start' })
+    await sleep(100)
+    s1.enter()
+    s2.enter()
+    const keepAlive = setInterval(() => s1.sync(10), 80)
+    await sleep(400 + TICK * 3)
+    clearInterval(keepAlive)
+    ok(
+        '一直不上报的人被按结束处理',
+        s1.lastRoom()?.players.find(p => p.name === '乙卡死')?.alive === false,
+    )
+    ok(
+        '还在上报的人继续活着',
+        s1.lastRoom()?.players.find(p => p.name === '甲超时')?.alive === true,
+    )
+    s1.send({
+        t: 'sync',
+        age: 12,
+        life: 0,
+        alive: false,
+        summary: 50,
+        props: { charm: 1, intelligence: 1, strength: 1, money: 1, spirit: 0 },
+        logs: [],
+    })
+    await sleep(200)
+    ok('另一人结束后可以收摊', s1.lastRoom()?.phase === 'over')
+    s1.close()
+    s2.close()
+    await sleep(100)
+    stallRelay.stop()
     relay.stop()
 
     console.log(`\n结果：${passed} 通过，${failed} 失败`)

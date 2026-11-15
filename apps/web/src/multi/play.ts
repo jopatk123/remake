@@ -6,7 +6,6 @@ import { LOG_LIMIT, type LogLine } from '@remake/multi'
 import * as client from './client'
 import { deathEventId } from './death'
 import { useInMatch, useMulti } from './useMulti'
-import { toastAchvs } from '@/toast/Achv'
 import { emitRareFxFromNext } from '@/fx/rare'
 
 /**
@@ -52,10 +51,11 @@ export function useMultiMatch(
             const result = next()
             advanced.current += 1
             try {
-                toastAchvs(result.achievements)
+                // 多人局不计入成就图鉴，也不弹解锁提示，避免「看起来解锁了、
+                // 回首页却没有」。对战列里的成就条目同样不展示。
                 emitRareFxFromNext(result, profile)
             } catch (error) {
-                console.error('[多人] 成就提示或特效失败', error)
+                console.error('[多人] 特效失败', error)
             }
         } catch (error) {
             // 引擎失败本拍重试，不再假装判死——空事件池已经不会抛错
@@ -67,35 +67,42 @@ export function useMultiMatch(
         if (!active || !state) return
         const { age, charm, intelligence, strength, money, spirit } =
             state.props.current
-        const key = `${age}:${state.life}`
-        if (synced.current === key) return
+        // 开局那一帧年龄还是 -1，等到第一拍再报，免得对手列闪出「-1 岁」
+        if (age < 0) return
+        const finished = state.life <= 0 || state.ending != null
+        const me = mp.room?.players.find(player => player.id === mp.id)
+        const acked = me?.alive === false
+        const key = `${age}:${state.life}:${state.ending ?? ''}`
+        // 正常年份各报一次；结束后如果房间还没认，每拍再补发，避免死亡包丢失
+        // 把整房卡到回合上限。
+        if (synced.current === key && (!finished || acked)) return
         // 死亡那一年的日志还没写进 atom 时先别上报：否则 deathEventId
         // 会去上一年的日志里找死因，榜单就会出现错误 / 空白的死因。
         // 等 logs 更新后 effect 会再跑一次，那时才真正 sync 阵亡状态。
-        if (state.life <= 0 && logs.at(-1)?.age !== age) return
+        if (finished && logs.at(-1)?.age !== age) return
         synced.current = key
         const lines: LogLine[] = logs.slice(-LOG_LIMIT).map(log => ({
             age: log.age,
             events: log.events,
             talents: log.talents,
-            achievements: log.achievements,
+            achievements: [],
         }))
         client.sync({
             age,
             life: state.life,
-            alive: state.life > 0,
+            alive: !finished,
             summary: score(state),
             props: { charm, intelligence, strength, money, spirit },
             logs: lines,
             talents: [...state.talents],
-            death: state.life > 0 ? null : deathEventId(lines),
+            death: finished ? deathEventId(lines) : null,
             realm: state.cultivation.realm,
             realmTitle: state.cultivation.started
                 ? realmTitle(state.cultivation.realm, state.cultivation.minor)
                 : undefined,
             ending: state.ending,
         })
-    }, [active, state, logs])
+    }, [active, state, logs, mp.round, mp.room, mp.id])
 
     return { active, mp }
 }

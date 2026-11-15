@@ -102,6 +102,7 @@ async function main() {
     await sleep(200)
     ok('进入 playing', client.getSnapshot().room?.phase === 'playing')
     ok('开局后先停着等人进入', client.getSnapshot().room?.paused === true)
+    ok('局次已下发', (client.getSnapshot().room?.match ?? 0) >= 1)
 
     console.log('\n[自动推进]')
     client.sync({ age: 0, life: 5, alive: true, summary: 0, props: PROPS, logs: [] })
@@ -200,6 +201,12 @@ async function main() {
     const snapLobby = client.getSnapshot()
     ok('倒计时到点才回到大厅', snapLobby.room?.phase === 'lobby')
     ok('年数清零，不带进下一局', snapLobby.round === 0)
+
+    client.start()
+    await sleep(200)
+    const snapNext = client.getSnapshot()
+    ok('下一局仍从 0 年开跑', snapNext.round === 0)
+    ok('下一局局次加一', (snapNext.room?.match ?? 0) > (snapOver.room?.match ?? 0))
 
     peer.close()
     client.disconnect()

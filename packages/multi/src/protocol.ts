@@ -28,6 +28,13 @@ export type EndingType =
 /** 单人人生没有年龄上限了，房间层面仍需一个回合保护，避免一局永远不结束 */
 export const MAX_ROUNDS = 3000
 
+/**
+ * 存活玩家超过这段时间不再上报，就按本局已结束处理。
+ * 死亡包在路上丢了时，避免整房空等到 MAX_ROUNDS。
+ * 服务端可用 SYNC_STALL_MS 覆盖（测试里会调短）。
+ */
+export const SYNC_STALL_MS = 20_000
+
 export interface Props {
     charm: number
     intelligence: number
@@ -143,6 +150,11 @@ export interface PlayerView {
 export interface RoomView {
     id: string
     phase: Phase
+    /**
+     * 本房间开过几局。每次 start 加一，用来丢掉上一局迟到的 tick。
+     * 大厅里仍是上一局的值，方便对照；未开过局为 0。
+     */
+    match: number
     /** 已完成多少年，0 表示还没开始推进 */
     round: number
     /** 当前节拍：每年间隔多少毫秒，任何人改都会广播给全房间 */
@@ -225,7 +237,7 @@ export type ServerMessage =
     | { t: 'welcome'; id: string; room: string }
     /** 房间全量视图，`room.result` 里带着上一局的排名 */
     | { t: 'room'; room: RoomView }
-    | { t: 'tick'; round: number }
+    | { t: 'tick'; round: number; match: number }
     /** 一条弹幕，全房间都收到（发的人自己也收到一份，界面逻辑统一） */
     | ({ t: 'danmaku' } & Danmaku)
     | { t: 'error'; message: string }

@@ -18,6 +18,7 @@ import {
     MIN_SPEED,
     RESULT_MS,
     ROUND_MS,
+    SYNC_STALL_MS,
 } from '@remake/multi'
 
 type Send = (msg: ServerMessage) => void
@@ -36,6 +37,13 @@ const RESULT_ENV = process.env.RESULT_MS?.trim()
 const RESULT = Number.isFinite(RESULT_ENV)
     ? Math.max(0, RESULT_ENV)
     : RESULT_MS
+/** 上报超时：死亡 sync 丢了也不至于空等到 MAX_ROUNDS */
+const STALL_ENV = process.env.SYNC_STALL_MS?.trim()
+    ? Number(process.env.SYNC_STALL_MS)
+    : NaN
+const STALL = Number.isFinite(STALL_ENV)
+    ? Math.max(200, STALL_ENV)
+    : SYNC_STALL_MS
 /** 结算期间重发房间视图的间隔：后加入 / 网络慢的人也能对上倒计时 */
 const RESULT_TICK = 500
 /** 每人最多记多少个天赋 id，防止异常客户端把包撑大 */
@@ -63,6 +71,8 @@ export interface Player {
     realm: number
     realmTitle: string | null
     ending: EndingType | null
+    /** 最近一次 sync / enter 的时间，用来发现上报卡住的人 */
+    lastSyncAt: number
     send: Send
 }
 
@@ -132,6 +142,8 @@ export class Room {
     private interval = ROUND
     /** 上一局的排名，结算那一拍就填好，开局清空 */
     private result: RankingItem[] | null = null
+    /** 开过几局。tick 带上它，客户端用来丢掉上一局迟到的节拍 */
+    private match = 0
     private clock: ReturnType<typeof setInterval> | null = null
     /** 结算倒计时的截止时间与定时器，到点才收回大厅 */
     private resultDeadline = 0
@@ -158,8 +170,9 @@ export class Room {
 
     join(id: string, name: string, send: Send): string | null {
         if (this.size >= MAX_PLAYERS) return '房间已满'
-        // 开局后再进来的人从 0 岁起跑，和已经在跑的人对不上，干脆不让进
-        if (this.phase === 'playing') return '对局已经开始，请等这一局结束'
+        // 开局后、结算倒计时里都不能进：中途进来的人从 0 岁起跑对不上，
+        // 结算页突然多一列也会把还在看排名的人布局打乱。
+        if (this.phase !== 'lobby') return '对局已经开始，请等这一局结束'
         const host = this.hostId === null
         this.players.set(id, {
             id,
@@ -177,6 +190,7 @@ export class Room {
             realm: 0,
             realmTitle: null,
             ending: null,
+            lastSyncAt: Date.now(),
             send,
         })
         if (host) this.hostId = id
@@ -215,6 +229,7 @@ export class Room {
         }
         this.phase = 'playing'
         this.round = 0
+        this.match += 1
         this.paused = false
         this.pausedBy = null
         this.waiting = true
@@ -234,6 +249,7 @@ export class Room {
             player.realm = 0
             player.realmTitle = null
             player.ending = null
+            player.lastSyncAt = Date.now()
         }
         this.startClock()
         this.broadcastRoom()
@@ -296,6 +312,7 @@ export class Room {
         if (!player || this.phase !== 'playing') return
         if (this.entered.has(id)) return
         this.entered.add(id)
+        player.lastSyncAt = Date.now()
         this.refreshWaiting()
         this.broadcastRoom()
     }
@@ -330,7 +347,13 @@ export class Room {
             player.realm = Math.max(0, Math.min(9, Math.round(payload.realm)))
         if (typeof payload.realmTitle === 'string')
             player.realmTitle = payload.realmTitle.slice(0, 24)
-        if (payload.ending) player.ending = payload.ending
+        player.lastSyncAt = Date.now()
+        // 有结局就等于这一生跑完了：不再要求客户端另外把 alive 打成 false，
+        // 否则飞升包丢了 alive 字段时整房会空转到回合上限。
+        if (payload.ending) {
+            player.ending = payload.ending
+            player.alive = false
+        }
         if (player.alive && !payload.alive) player.alive = false
         // 这一拍要是刚好结算了，checkOver 会自己广播带倒计时的房间视图
         if (!this.checkOver()) this.broadcastRoom()
@@ -371,11 +394,30 @@ export class Room {
         if (this.phase !== 'playing') return
         if (this.waiting || this.paused) return
         this.round++
-        this.broadcast({ t: 'tick', round: this.round })
+        this.broadcast({ t: 'tick', round: this.round, match: this.match })
+        this.applyStall()
         // 人生不再有 500 岁上限，房间层面留一个很长的回合保护，
         // 免得极端情况下（谁都没飞升也没死）一局永远收不了摊。
-        if (this.round >= MAX_ROUNDS && this.checkOver()) return
+        if (this.checkOver()) return
         this.broadcastRoom()
+    }
+
+    /**
+     * 还连着、却很久不上报的人：多半是死亡包丢了，或本地推进卡死。
+     * 按本局结束处理，让其他人能收摊；连接还在，榜上仍留着。
+     */
+    private applyStall() {
+        if (this.waiting || this.paused) return
+        const now = Date.now()
+        for (const player of this.players.values()) {
+            if (!player.alive || !player.connected) continue
+            if (!this.entered.has(player.id)) continue
+            if (now - player.lastSyncAt < STALL) continue
+            player.alive = false
+            console.log(
+                `[${this.id}] ${player.name} 超过 ${STALL}ms 未上报，按结束处理`,
+            )
+        }
     }
 
     /** 活人都完成准备并进入对局后才开始跑；有人没报到就一直等 */
@@ -479,6 +521,7 @@ export class Room {
             player.realm = 0
             player.realmTitle = null
             player.ending = null
+            player.lastSyncAt = Date.now()
         }
         // 房主还在就接着当，不在了才随机换人（结算期间掉线也算不在）
         const host = this.hostId ? this.players.get(this.hostId) : undefined
@@ -531,6 +574,7 @@ export class Room {
         return {
             id: this.id,
             phase: this.phase,
+            match: this.match,
             round: this.round,
             interval: this.interval,
             paused: this.waiting || this.paused,

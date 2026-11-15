@@ -77,13 +77,16 @@ export function Room() {
     const started = useRef(false)
     const autoJoined = useRef(false)
 
-    // 房主开始后，所有人各自进入自己那一套选天赋流程
+    // 房主开始后，所有人各自进入自己那一套选天赋流程。
+    // 必须还连着：断线后房间快照可能仍停在 playing，不能误开选天赋。
     useEffect(() => {
+        if (mp.room?.phase === 'lobby') started.current = false
+        if (mp.status !== 'connected') return
         if (mp.room?.phase !== 'playing' || started.current) return
         started.current = true
         reset()
         chooseMode(Mode.Classic)
-    }, [mp.room?.phase, reset, chooseMode])
+    }, [mp.status, mp.room?.phase, reset, chooseMode])
 
     // 从邀请链接进来 + 之前留过昵称 → 直接进房，省掉一次点击
     useEffect(() => {
@@ -93,6 +96,14 @@ export function Room() {
         autoJoined.current = true
         connect(urlRoom, saved)
     }, [urlRoom, joined])
+
+    // 对战中途断线后房间页会重新挂载，输入框里的随机号可能已经不是原来那间；
+    // 把还留着的房间快照写回去，点「加入房间」才会进对的那间。
+    useEffect(() => {
+        if (mp.status !== 'closed' && mp.status !== 'error') return
+        if (!mp.room?.id) return
+        setCode(mp.room.id)
+    }, [mp.status, mp.room?.id])
 
     const handleJoin = useCallback(() => {
         const nick = name.trim()

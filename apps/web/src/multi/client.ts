@@ -2,6 +2,7 @@ import type {
     ClientMessage,
     Danmaku,
     LogLine,
+    Phase,
     Props,
     RoomView,
     ServerMessage,
@@ -18,6 +19,8 @@ export interface MultiState {
     room: RoomView | null
     /** 已完成年数，收到更大的值就该推进一年 */
     round: number
+    /** 当前这一局的局次，用来丢掉上一局迟到的 tick */
+    match: number
     /** 最近收到的弹幕，只留最新的若干条，不做定时清理 */
     danmaku: Danmaku[]
     /** 最近一条错误提示 */
@@ -29,6 +32,7 @@ const initial: MultiState = {
     id: null,
     room: null,
     round: 0,
+    match: 0,
     danmaku: [],
     message: null,
 }
@@ -54,6 +58,34 @@ export function subscribe(listener: () => void) {
 
 export function getSnapshot() {
     return state
+}
+
+/** 房间快照怎么改本地年数 / 局次：新的一局从 0 起，上一局迟到的快照丢掉 */
+export function applyRoomRound(
+    current: { round: number; match: number },
+    room: RoomView,
+): { round: number; match: number } | 'ignore' {
+    const match = room.match ?? 0
+    if (match !== 0 && current.match !== 0 && match < current.match)
+        return 'ignore'
+    const newMatch = match > current.match
+    const round =
+        room.phase === 'lobby' || newMatch
+            ? room.phase === 'lobby'
+                ? 0
+                : room.round
+            : Math.max(current.round, room.round)
+    return { round, match }
+}
+
+/** 只接受当前这一局、还在 playing 里的 tick */
+export function applyTickRound(
+    current: { match: number; phase: Phase | null | undefined },
+    tick: { round: number; match: number },
+): number | 'ignore' {
+    if (current.phase !== 'playing') return 'ignore'
+    if (tick.match !== current.match) return 'ignore'
+    return tick.round
 }
 
 /**
@@ -98,17 +130,20 @@ export function connect(room: string, name: string) {
                 commit({ id: msg.id })
                 break
             case 'room': {
-                const room = msg.room
-                // 回到大厅 = 上一局收摊了：年数清零，不带进下一局
-                commit({
-                    room,
-                    round: room.phase === 'lobby' ? 0 : Math.max(state.round, room.round),
-                })
+                const next = applyRoomRound(state, msg.room)
+                if (next === 'ignore') break
+                commit({ room: msg.room, match: next.match, round: next.round })
                 break
             }
-            case 'tick':
-                commit({ round: msg.round })
+            case 'tick': {
+                const round = applyTickRound(
+                    { match: state.match, phase: state.room?.phase },
+                    msg,
+                )
+                if (round === 'ignore') break
+                commit({ round })
                 break
+            }
             case 'danmaku': {
                 const { id, from, name, text, at } = msg
                 // 不做定时消失：留着当聊天记录，只有攒够上限才让最旧的被挤掉
@@ -123,7 +158,14 @@ export function connect(room: string, name: string) {
     }
     ws.onclose = () => {
         socket = null
-        commit({ status: state.status === 'error' ? 'error' : 'closed' })
+        // 年数清掉，房间快照留着：Play 靠 status 退回房间页，
+        // 房间页还能显示原来的房号方便重新加入。
+        commit({
+            status: state.status === 'error' ? 'error' : 'closed',
+            round: 0,
+            match: 0,
+            id: null,
+        })
     }
     ws.onerror = () => commit({ status: 'error', message: '连接失败' })
 }

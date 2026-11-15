@@ -157,19 +157,22 @@ function Solo() {
 /** 在房间里就走全场对战，否则还是原来那套单人流程 */
 export function Play() {
     const active = useInMatch()
-    const room = useMulti().room
+    const mp = useMulti()
     const setStep = useSetStep()
     /**
      * 结算阶段（over）仍留在对战页看倒计时；服务端数完秒把房间收回
      * 大厅（phase 变回 lobby）后，才主动退回房间页 —— 否则会掉进
      * 「不在对局里」的分支，露出上一局的单人页面，而那个页面已经不能推进了。
+     *
+     * 对战中途断线同理：不能把同一条命接到单人「下一年」上，回房间重新进。
      */
-    const lobby = room !== null && room.phase === 'lobby'
+    const lobby = mp.room !== null && mp.room.phase === 'lobby'
+    const dropped = mp.status === 'closed' || mp.status === 'error'
     useEffect(() => {
-        if (lobby) setStep(Step.Room)
-    }, [lobby, setStep])
+        if (lobby || dropped) setStep(Step.Room)
+    }, [lobby, dropped, setStep])
     // 退回房间页的那一两帧不要闪出单人界面
-    if (lobby) return null
+    if (lobby || dropped) return null
     return active ? <Battle /> : <Solo />
 }
 

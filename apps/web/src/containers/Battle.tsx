@@ -464,7 +464,10 @@ export function Battle() {
                             tone={index % 5}
                             leading={player.id === leaderId}
                             talents={state ? [...state.talents] : []}
-                            logs={logs}
+                            logs={logs.map(log => ({
+                                ...log,
+                                achievements: [],
+                            }))}
                             interval={room.interval}
                         />
                     ) : (
